@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 export function BrowserRouter(...routes) {
 
     const container = document.createElement('div');
