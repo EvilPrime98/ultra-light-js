@@ -1,0 +1,28 @@
+{
+  "name": "@evilprime98/ultra-light-react",
+  "version": "1.0.0",
+  "description": "Un framework ligero de componentización con estado reactivo y enrutamiento",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "keywords": [
+    "framework",
+    "reactive",
+    "components",
+    "router",
+    "lightweight",
+    "state-management"
+  ],
+  "author": "EvilPrime98",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EvilPrime98/ultra-light-react.git"
+  },
+  "bugs": {
+    "url": "https://github.com/EvilPrime98/ultra-light-react/issues"
+  },
+  "homepage": "https://github.com/EvilPrime98/ultra-light-react#readme"
+}
