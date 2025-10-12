@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from './useEffect.js';
 
 export function BrowserRouter(...routes) {
 
