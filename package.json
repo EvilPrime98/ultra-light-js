@@ -1,28 +1,30 @@
 {
-  "name": "@evilprime98/ultra-light-react",
+  "name": "ultra-light-framework",
   "version": "1.0.0",
-  "description": "Un framework ligero de componentización con estado reactivo y enrutamiento",
-  "type": "module",
-  "main": "./src/index.js",
-  "exports": {
-    ".": "./src/index.js"
+  "description": "Un mini framework reactivo para desarrollo web con state management, routing y componentes",
+  "main": "dist/ultra-light.js",
+  "module": "dist/ultra-light.js",
+  "types": "dist/types.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "framework",
     "reactive",
-    "components",
+    "state-management",
     "router",
+    "components",
     "lightweight",
-    "state-management"
+    "vanilla-js"
   ],
-  "author": "EvilPrime98",
+  "author": "Amín Pérez <joseamin1998@gmail.com>",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/EvilPrime98/ultra-light-react.git"
-  },
-  "bugs": {
-    "url": "https://github.com/EvilPrime98/ultra-light-react/issues"
-  },
-  "homepage": "https://github.com/EvilPrime98/ultra-light-react#readme"
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
 }
