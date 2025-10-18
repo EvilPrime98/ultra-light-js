@@ -29,12 +29,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aminpdev/ultra-light.js.git"
+    "url": "git+https://github.com/EvilPrime98/ultra-light-js.git"
   },
   "bugs": {
-    "url": "https://github.com/aminpdev/ultra-light.js/issues"
+    "url": "https://github.com/EvilPrime98/ultra-light-js/issues"
   },
-  "homepage": "https://github.com/aminpdev/ultra-light.js#readme",
+  "homepage": "https://github.com/EvilPrime98/ultra-light-js#readme",
   "devDependencies": {
     "typescript": "^5.0.0"
   }
