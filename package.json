@@ -20,10 +20,21 @@
     "router",
     "components",
     "lightweight",
-    "vanilla-js"
+    "vanilla-js",
+    "typescript",
+    "spa",
+    "ui-framework"
   ],
   "author": "Amín Pérez <joseamin1998@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aminpdev/ultra-light-framework.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aminpdev/ultra-light-framework/issues"
+  },
+  "homepage": "https://github.com/aminpdev/ultra-light-framework#readme",
   "devDependencies": {
     "typescript": "^5.0.0"
   }
