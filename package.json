@@ -1,5 +1,5 @@
 {
-  "name": "ultra-light-framework",
+  "name": "ultra-light.js",
   "version": "1.0.0",
   "description": "Un mini framework reactivo para desarrollo web con state management, routing y componentes",
   "main": "dist/ultra-light.js",
@@ -29,12 +29,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aminpdev/ultra-light-framework.git"
+    "url": "git+https://github.com/aminpdev/ultra-light.js.git"
   },
   "bugs": {
-    "url": "https://github.com/aminpdev/ultra-light-framework/issues"
+    "url": "https://github.com/aminpdev/ultra-light.js/issues"
   },
-  "homepage": "https://github.com/aminpdev/ultra-light-framework#readme",
+  "homepage": "https://github.com/aminpdev/ultra-light.js#readme",
   "devDependencies": {
     "typescript": "^5.0.0"
   }
