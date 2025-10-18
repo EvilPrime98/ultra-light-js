@@ -1,33 +1,33 @@
 # Ultra Light Framework
 
-Un mini framework reactivo y ultra ligero para desarrollo web moderno, sin dependencias.
+An ultra-lightweight and reactive mini framework for modern web development, with zero dependencies.
 
-## ✨ Características
+## ✨ Features
 
-- 🚀 **State Management reactivo** - Sistema de estado simple y potente
-- 🔀 **Router SPA** - Navegación client-side integrada con soporte para parámetros dinámicos
-- 🎨 **Sistema de componentes** - Componentes reutilizables con ciclo de vida
-- 💅 **Scoped CSS** - Estilos con scope automático para evitar conflictos
-- 🎯 **Context API** - Compartir estado entre componentes
-- 📦 **Sin dependencias** - Zero dependencies
-- ⚡ **Ultra ligero** - Menos de 5KB minificado
-- 🔧 **TypeScript** - Completamente tipado
+- 🚀 **Reactive State Management** - Simple and powerful state system
+- 🔀 **SPA Router** - Built-in client-side navigation with dynamic parameter support
+- 🎨 **Component System** - Reusable components with lifecycle
+- 💅 **Scoped CSS** - Automatic scoped styles to avoid conflicts
+- 🎯 **Context API** - Share state between components
+- 📦 **Zero dependencies** - No dependencies required
+- ⚡ **Ultra lightweight** - Less than 5KB minified
+- 🔧 **TypeScript** - Fully typed
 
-## 📦 Instalación
+## 📦 Installation
 ```bash
 npm install ultra-light-framework
 ```
 
-## 🚀 Inicio rápido
+## 🚀 Quick Start
 ```javascript
 import { ultraState, UltraComponent, UltraRouter } from 'ultra-light-framework';
 
 // State management
 const [getCount, setCount, subscribe] = ultraState(0);
 
-// Crear un componente
+// Create a component
 const Counter = UltraComponent({
-  component: '<div><h1>Contador: <span id="count">0</span></h1><button id="btn">Incrementar</button></div>',
+  component: '<div><h1>Counter: <span id="count">0</span></h1><button id="btn">Increment</button></div>',
   eventHandlers: [{
     eventType: 'click',
     eventCallback: (e) => {
@@ -49,36 +49,36 @@ document.body.appendChild(Counter);
 
 ## 📖 API
 
-### `ultraState(initialValue)`
+### ultraState(initialValue)
 
-Crea un estado reactivo.
+Creates a reactive state.
 ```javascript
 const [getValue, setValue, subscribe] = ultraState(0);
 
-// Obtener valor
+// Get value
 console.log(getValue()); // 0
 
-// Establecer valor
+// Set value
 setValue(5);
 
-// Suscribirse a cambios
+// Subscribe to changes
 const unsubscribe = subscribe((newValue) => {
-  console.log('Nuevo valor:', newValue);
+  console.log('New value:', newValue);
 });
 
-// Cancelar suscripción
+// Unsubscribe
 unsubscribe();
 ```
 
-### `UltraRouter(...routes)`
+### UltraRouter(...routes)
 
-Crea un router para navegación SPA.
+Creates a router for SPA navigation.
 ```javascript
 import { UltraRouter, UltraLink } from 'ultra-light-framework';
 
 const Home = () => '<div><h1>Home</h1></div>';
 const About = () => '<div><h1>About</h1></div>';
-const User = (params) => `<div><h1>Usuario: ${params.id}</h1></div>`;
+const User = (params) => `<div><h1>User: ${params.id}</h1></div>`;
 
 const router = UltraRouter(
   { path: '/', component: Home },
@@ -90,19 +90,19 @@ const router = UltraRouter(
 document.body.appendChild(router);
 ```
 
-### `UltraLink({ href, child })`
+### UltraLink({ href, child })
 
-Crea enlaces de navegación SPA.
+Creates SPA navigation links.
 ```javascript
 const link = UltraLink({
   href: '/about',
-  child: '<span>Ir a About</span>'
+  child: '<span>Go to About</span>'
 });
 ```
 
-### `UltraComponent(props)`
+### UltraComponent(props)
 
-Crea componentes con eventos, estilos y ciclo de vida.
+Creates components with events, styles, and lifecycle.
 ```javascript
 const Button = UltraComponent({
   component: '<button class="btn">Click me</button>',
@@ -118,41 +118,41 @@ const Button = UltraComponent({
 });
 ```
 
-### `Activity(props)`
+### Activity(props)
 
-Muestra/oculta elementos basado en estado.
+Shows/hides elements based on state.
 ```javascript
 const [isVisible, setVisible, subscribeVisible] = ultraState(true);
 
 const ConditionalDiv = Activity({
-  component: '<div>Solo visible cuando isVisible es true</div>',
+  component: '<div>Only visible when isVisible is true</div>',
   stateOn: isVisible,
   subscriber: subscribeVisible,
-  invert: false // true para invertir la lógica
+  invert: false // true to invert the logic
 });
 ```
 
-### `UltraContext(initialValue)`
+### UltraContext(initialValue)
 
-Crea un contexto global para compartir estado.
+Creates a global context to share state.
 ```javascript
 const ThemeContext = UltraContext('light');
 
-// Proveer valor
+// Provide value
 ThemeContext.provide('dark');
 
-// Obtener valor
+// Get value
 console.log(ThemeContext.getValue()); // 'dark'
 
-// Suscribirse
+// Subscribe
 ThemeContext.subscribe((theme) => {
-  console.log('Tema cambiado:', theme);
+  console.log('Theme changed:', theme);
 });
 ```
 
-### `ultraStyles(cssString)`
+### ultraStyles(cssString)
 
-Crea estilos con scope automático.
+Creates automatically scoped styles.
 ```javascript
 const styles = ultraStyles(`
   .container {
@@ -165,50 +165,50 @@ const styles = ultraStyles(`
   }
 `);
 
-// Usar las clases con scope
+// Use scoped classes
 const Component = `<div class="${styles.container}">
-  <h1 class="${styles.title}">Título</h1>
+  <h1 class="${styles.title}">Title</h1>
 </div>`;
 ```
 
-### `ultraEffect(fn, subscriberArray)`
+### ultraEffect(fn, subscriberArray)
 
-Ejecuta efectos secundarios cuando cambian estados.
+Executes side effects when states change.
 ```javascript
 const [count, setCount, subscribeCount] = ultraState(0);
 const [name, setName, subscribeName] = ultraState('John');
 
 const cleanup = ultraEffect(() => {
-  console.log(`${name()} tiene ${count()} puntos`);
+  console.log(`${name()} has ${count()} points`);
 }, [subscribeCount, subscribeName]);
 
-// Limpiar efecto
+// Clean up effect
 cleanup();
 ```
 
-### `ultraQueryParams()`
+### ultraQueryParams()
 
-Obtiene parámetros de la URL.
+Gets URL parameters.
 ```javascript
 // URL: ?name=John&age=30
 const params = ultraQueryParams();
 console.log(params); // { name: 'John', age: '30' }
 ```
 
-### `UltraFragment(...children)`
+### UltraFragment(...children)
 
-Agrupa múltiples elementos sin nodo contenedor.
+Groups multiple elements without a container node.
 ```javascript
 const fragment = UltraFragment(
-  '<div>Elemento 1</div>',
-  '<div>Elemento 2</div>',
-  '<div>Elemento 3</div>'
+  '<div>Element 1</div>',
+  '<div>Element 2</div>',
+  '<div>Element 3</div>'
 );
 ```
 
-## 🎯 Ejemplos
+## 🎯 Examples
 
-### Todo App completa
+### Complete Todo App
 ```javascript
 import { ultraState, UltraComponent, ultraStyles } from 'ultra-light-framework';
 
@@ -221,8 +221,8 @@ const [getTodos, setTodos, subscribeTodos] = ultraState([]);
 
 const TodoApp = UltraComponent({
   component: `<div class="${styles['todo-app']}">
-    <input id="todo-input" type="text" placeholder="Nueva tarea..." />
-    <button id="add-btn">Agregar</button>
+    <input id="todo-input" type="text" placeholder="New task..." />
+    <button id="add-btn">Add</button>
     <div id="todo-list"></div>
   </div>`,
   eventHandlers: [{
@@ -251,19 +251,19 @@ const TodoApp = UltraComponent({
 document.body.appendChild(TodoApp);
 ```
 
-## 🤝 Contribuir
+## 🤝 Contributing
 
-Las contribuciones son bienvenidas. Por favor abre un issue o pull request en GitHub.
+Contributions are welcome! Please open an issue or pull request on GitHub.
 
-## 📄 Licencia
+## 📄 License
 
 MIT
 
-## 👤 Autor
+## 👤 Author
 
 Amín Pérez Alconchel
 
-## 🔗 Enlaces
+## 🔗 Links
 
 - [GitHub](https://github.com/EvilPrime98/ultra-light-js)
 - [NPM](https://www.npmjs.com/package/ultra-light-framework)
