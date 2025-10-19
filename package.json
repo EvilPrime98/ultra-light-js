@@ -1,7 +1,7 @@
 {
   "name": "ultra-light.js",
   "version": "1.0.0",
-  "description": "Un mini framework reactivo para desarrollo web con state management, routing y componentes",
+  "description": "A lightweight JavaScript framework for building reactive, state-management, and SPA applications.",
   "main": "dist/ultra-light.js",
   "module": "dist/ultra-light.js",
   "types": "dist/types.d.ts",
