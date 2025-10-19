@@ -15,11 +15,11 @@ export interface RouteMatch {
 }
 export interface Route {
     path: string;
-    component: (params?: Record<string, string>) => string | HTMLElement;
+    component: (params?: Record<string, string>) => string | HTMLElement | DocumentFragment;
 }
 export interface UltraLinkProps {
     href: string;
-    child: string | HTMLElement;
+    child: string | HTMLElement | DocumentFragment;
 }
 export interface EventHandler {
     eventType: string;
@@ -30,14 +30,14 @@ export interface Trigger<T = HTMLElement> {
     subscriberFunction: (node: T) => void;
 }
 export interface UltraComponentProps {
-    component: string | HTMLElement;
+    component: string | HTMLElement | DocumentFragment;
     eventHandlers?: EventHandler[];
     styles?: Partial<CSSStyleDeclaration>;
-    children?: (string | HTMLElement | Node)[];
+    children?: (string | HTMLElement | Node | DocumentFragment)[];
     trigger?: Trigger[];
 }
 export interface ActivityProps {
-    component: string | HTMLElement;
+    component: string | HTMLElement | DocumentFragment;
     stateOn: () => boolean;
     subscriber: (fn: () => void) => () => void;
     invert?: boolean;
