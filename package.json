@@ -1,10 +1,18 @@
 {
   "name": "ultra-light.js",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A lightweight JavaScript framework for building reactive, state-management, and SPA applications.",
   "main": "dist/ultra-light.js",
   "module": "dist/ultra-light.js",
-  "types": "dist/types.d.ts",
+  "types": "dist/ultra-light.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/ultra-light.d.ts",
+      "import": "./dist/ultra-light.js",
+      "require": "./dist/ultra-light.js",
+      "default": "./dist/ultra-light.js"
+    }
+  },
   "files": [
     "dist",
     "README.md"
