@@ -42,6 +42,7 @@ export interface ActivityProps {
     subscriber: (fn: () => void) => () => void;
     invert?: boolean;
     trigger?: Trigger[];
+    type?: 'display' | 'visibility';
 }
 export type CleanupFunction = () => void;
 export interface ElementWithCleanup extends HTMLElement {

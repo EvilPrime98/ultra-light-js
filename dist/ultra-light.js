@@ -290,7 +290,12 @@ export function UltraComponent({ component, eventHandlers = [], styles = {}, chi
     };
     return node;
 }
-export function Activity({ component, stateOn, subscriber, invert = false, trigger = [] }) {
+export function Activity({ component, stateOn, subscriber, invert = false, trigger = [], type = 'display' }) {
+    const supportedTypes = ['display', 'visibility'];
+    if (!supportedTypes.includes(type)) {
+        console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
+        type = 'display';
+    }
     const element = parseHTMLString(component);
     if (!element) {
         console.error('Activity: No se pudo crear el elemento');
@@ -300,7 +305,12 @@ export function Activity({ component, stateOn, subscriber, invert = false, trigg
     const update = () => {
         try {
             const current = invert ? !stateOn() : stateOn();
-            element.style.display = current ? '' : 'none';
+            if (type === 'display') {
+                element.style.display = current ? '' : 'none';
+            }
+            else if (type === 'visibility') {
+                element.style.visibility = current ? 'visible' : 'hidden';
+            }
         }
         catch (error) {
             console.error('Error al actualizar Activity:', error);
