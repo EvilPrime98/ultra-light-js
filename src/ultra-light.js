@@ -345,57 +345,98 @@ export function Activity({
     stateOn,
     subscriber,
     invert = false,
-    trigger = []
+    trigger = [],
+    type = 'display' 
 }) {
+
+    const supportedTypes = ['display', 'visibility'];
+
+    if (!supportedTypes.includes(type)) {
+        console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
+        type = 'display';
+    }
+    
     const element = parseHTMLString(component);
 
     if (!element) {
         console.error('Activity: No se pudo crear el elemento');
         return document.createElement('div');
     }
-
+    
     const cleanupFunctions = [];
     
     const update = () => {
+
         try {
+
             const current = invert ? !stateOn() : stateOn();
-            element.style.display = current ? '' : 'none';
+            
+            if (type === 'display') {
+                element.style.display = current ? '' : 'none';
+            } else if (type === 'visibility') {
+                element.style.visibility = current ? 'visible' : 'hidden';
+            }
+
         } catch (error) {
+
+            
             console.error('Error al actualizar Activity:', error);
         }
-    };
 
+    };
+    
     const unsubscribe = subscriber(update);
+
     if (unsubscribe) {
         cleanupFunctions.push(unsubscribe);
     }
     
     update();
-
+    
     trigger.forEach(t => {
+
         const { subscriber, subscriberFunction } = t;
+
         if (subscriber && subscriberFunction) {
+
             try {
+
                 const unsub = subscriber(() => subscriberFunction(element));
+
                 if (unsub) {
                     cleanupFunctions.push(unsub);
                 }
-            } catch (error) {
+
+            }
+            catch (error) {
+
                 console.error('Error en trigger de Activity:', error);
+
             }
+
         }
+
     });
-
+    
     element._cleanup = () => {
-        cleanupFunctions.forEach(cleanup => {
-            try {
-                cleanup();
-            } catch (error) {
-                console.error('Error al limpiar Activity:', error);
-            }
-        });
-    };
 
+        cleanupFunctions.forEach(cleanup => {
+
+            try {
+
+                cleanup();
+
+            }
+            catch (error) {
+
+                console.error('Error al limpiar Activity:', error);
+
+            }
+
+        });
+        
+    };
+    
     return element;
 }
 

@@ -371,8 +371,17 @@ export function Activity({
     stateOn,
     subscriber,
     invert = false,
-    trigger = []
+    trigger = [],
+    type = 'display'
 }: ActivityProps): ElementWithCleanup {
+
+    const supportedTypes = ['display', 'visibility'];
+
+    if (!supportedTypes.includes(type)) {
+        console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
+        type = 'display';
+    }
+    
     const element = parseHTMLString(component) as ElementWithCleanup;
 
     if (!element) {
@@ -385,7 +394,12 @@ export function Activity({
     const update = (): void => {
         try {
             const current = invert ? !stateOn() : stateOn();
-            (element as HTMLElement).style.display = current ? '' : 'none';
+            
+            if (type === 'display') {
+                (element as HTMLElement).style.display = current ? '' : 'none';
+            } else if (type === 'visibility') {
+                (element as HTMLElement).style.visibility = current ? 'visible' : 'hidden';
+            }
         } catch (error) {
             console.error('Error al actualizar Activity:', error);
         }
