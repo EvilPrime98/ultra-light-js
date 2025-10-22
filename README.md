@@ -266,4 +266,4 @@ Amín Pérez Alconchel
 ## 🔗 Links
 
 - [GitHub](https://github.com/EvilPrime98/ultra-light-js)
-- [NPM](https://www.npmjs.com/package/ultra-light-framework)
+- [NPM](https://www.npmjs.com/package/ultra-light.js)
