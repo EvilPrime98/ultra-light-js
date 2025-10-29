@@ -15,12 +15,12 @@ An ultra-lightweight and reactive mini framework for modern web development, wit
 
 ## 📦 Installation
 ```bash
-npm install ultra-light-framework
+npm install ultra-light-js
 ```
 
 ## 🚀 Quick Start
 ```javascript
-import { ultraState, UltraComponent, UltraRouter } from 'ultra-light-framework';
+import { ultraState, UltraComponent, UltraRouter } from 'ultra-light-js';
 
 // State management
 const [getCount, setCount, subscribe] = ultraState(0);
@@ -74,7 +74,7 @@ unsubscribe();
 
 Creates a router for SPA navigation.
 ```javascript
-import { UltraRouter, UltraLink } from 'ultra-light-framework';
+import { UltraRouter, UltraLink } from 'ultra-light-js';
 
 const Home = () => '<div><h1>Home</h1></div>';
 const About = () => '<div><h1>About</h1></div>';
@@ -210,7 +210,7 @@ const fragment = UltraFragment(
 
 ### Complete Todo App
 ```javascript
-import { ultraState, UltraComponent, ultraStyles } from 'ultra-light-framework';
+import { ultraState, UltraComponent, ultraStyles } from 'ultra-light-js';
 
 const styles = ultraStyles(`
   .todo-app { max-width: 600px; margin: 0 auto; }

@@ -14,6 +14,21 @@ import type {
     ContainerWithCleanup
 } from './types.ts';
 
+export type {
+    UltraStateReturn,
+    UltraContextReturn,
+    Route,
+    UltraLinkProps,
+    EventHandler,
+    Trigger,
+    UltraComponentProps,
+    ActivityProps,
+    CleanupFunction,
+    ElementWithCleanup,
+    AnchorWithCleanup,
+    ContainerWithCleanup
+}
+
 function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement | Node | null {
     if (typeof htmlString !== 'string') return htmlString;
     const template = document.createElement('template');
