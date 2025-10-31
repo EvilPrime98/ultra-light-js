@@ -36,13 +36,13 @@ function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement |
     return template.content.firstChild;
 }
 
-function hashString(str: string): string {
+function stableHash(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash = hash & hash;
+        hash |= 0;
     }
-    return Math.abs(hash).toString(36) + '_' + Date.now().toString(36).slice(-4);
+    return Math.abs(hash).toString(36);
 }
 
 export function ultraState<T>(initialValue: T): [
@@ -457,53 +457,44 @@ export function Activity({
 const styleCache = new Map<string, Record<string, string>>();
 
 export function ultraStyles(cssString: string): Record<string, string> {
+
     if (!cssString || typeof cssString !== 'string') {
         console.warn('ultraStyles: cssString inválido');
         return {};
     }
 
-    const hash = hashString(cssString);
+    const hash = stableHash(cssString);
 
     if (styleCache.has(hash)) {
         return styleCache.get(hash)!;
     }
 
-    const classMap: Record<string, string> = {};
-
-    if (!document.getElementById(`style_${hash}`)) {
-        const styleEl = document.createElement('style');
-        styleEl.id = `style_${hash}`;
-
-        const classRegex = /\.([a-zA-Z_-][a-zA-Z0-9_-]*)/g;
-        let match: RegExpExecArray | null;
-        const classNames = new Set<string>();
-
-        while ((match = classRegex.exec(cssString)) !== null) {
-            classNames.add(match[1]);
-        }
-
-        let scopedCSS = cssString;
-        classNames.forEach(className => {
-            const hashedClass = `${className}_${hash}`;
-            classMap[className] = hashedClass;
-            const pattern = new RegExp(`\\.${className}\\b`, 'g');
-            scopedCSS = scopedCSS.replace(pattern, `.${hashedClass}`);
-        });
-
-        styleEl.textContent = scopedCSS;
+    let styleEl = document.getElementById('ultra-styles') as HTMLStyleElement | null;
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'ultra-styles';
         document.head.appendChild(styleEl);
-    } else {
-        const classRegex = /\.([a-zA-Z_-][a-zA-Z0-9_-]*)/g;
-        let match: RegExpExecArray | null;
-        const classNames = new Set<string>();
+    }
 
-        while ((match = classRegex.exec(cssString)) !== null) {
-            classNames.add(match[1]);
-        }
+    const classMap: Record<string, string> = {};
+    const classRegex = /\.([a-zA-Z_-][a-zA-Z0-9_-]*)/g;
+    let match: RegExpExecArray | null;
+    const classNames = new Set<string>();
 
-        classNames.forEach(className => {
-            classMap[className] = `${className}_${hash}`;
-        });
+    while ((match = classRegex.exec(cssString)) !== null) {
+        classNames.add(match[1]);
+    }
+
+    let scopedCSS = cssString;
+    classNames.forEach(className => {
+        const hashedClass = `${className}_${hash}`;
+        classMap[className] = hashedClass;
+        const pattern = new RegExp(`\\.${className}\\b`, 'g');
+        scopedCSS = scopedCSS.replace(pattern, `.${hashedClass}`);
+    });
+
+    if (!styleEl.textContent?.includes(`/*${hash}*/`)) {
+        styleEl.textContent += `\n/*${hash}*/\n${scopedCSS}`;
     }
 
     styleCache.set(hash, classMap);
