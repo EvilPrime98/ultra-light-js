@@ -30,9 +30,20 @@ export type {
 }
 
 function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement | Node | null {
-    if (typeof htmlString !== 'string') return htmlString;
+    if (typeof htmlString !== 'string') return htmlString;    
+    const trimmed = htmlString.trim();
+    const svgTags = ['svg', 'line', 'circle', 'rect', 'path', 'polygon', 'polyline', 
+    'ellipse', 'text', 'g', 'defs', 'use', 'symbol', 'marker',
+    'clipPath', 'mask', 'pattern', 'linearGradient', 'radialGradient'];
+    const tagMatch = trimmed.match(/^<([a-z][a-z0-9]*)/i);
+    const isSVGElement = tagMatch && svgTags.includes(tagMatch[1].toLowerCase());   
+    if (isSVGElement) {
+        const temp = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        temp.innerHTML = trimmed;
+        return temp.firstChild;
+    }
     const template = document.createElement('template');
-    template.innerHTML = htmlString.trim();
+    template.innerHTML = trimmed;
     return template.content.firstChild;
 }
 
