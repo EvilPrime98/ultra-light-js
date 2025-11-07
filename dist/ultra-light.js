@@ -2,10 +2,27 @@ function parseHTMLString(htmlString) {
     if (typeof htmlString !== 'string')
         return htmlString;
     const trimmed = htmlString.trim();
-    const svgTags = ['svg', 'line', 'circle', 'rect', 'path', 'polygon', 'polyline',
-        'ellipse', 'text', 'g', 'defs', 'use', 'symbol', 'marker',
-        'clipPath', 'mask', 'pattern', 'linearGradient', 'radialGradient', 'image'];
-    const tagMatch = trimmed.match(/^<([a-z][a-z0-9]*)/i);
+    const svgTags = [
+        'svg', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'rect', 'path',
+        'text', 'tspan', 'tref', 'textPath', 'altGlyph', 'altGlyphDef', 'altGlyphItem', 'glyphRef',
+        'g', 'defs', 'symbol', 'use', 'marker', 'clipPath', 'mask', 'pattern',
+        'linearGradient', 'radialGradient', 'meshGradient', 'stop', 'hatch', 'hatchpath',
+        'image', 'foreignObject',
+        'animate', 'animateMotion', 'animateTransform', 'set', 'animateColor', 'mpath',
+        'filter', 'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite',
+        'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight',
+        'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR',
+        'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology',
+        'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile',
+        'feTurbulence',
+        'font', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src',
+        'font-face-uri', 'glyph', 'hkern', 'missing-glyph', 'vkern',
+        'metadata', 'title', 'desc',
+        'a', 'view', 'script', 'style',
+        'color-profile',
+        'switch', 'cursor'
+    ];
+    const tagMatch = trimmed.match(/^<([a-z][a-z0-9-]*)/i);
     const isSVGElement = tagMatch && svgTags.includes(tagMatch[1].toLowerCase());
     if (isSVGElement) {
         const temp = document.createElementNS("http://www.w3.org/2000/svg", "svg");
