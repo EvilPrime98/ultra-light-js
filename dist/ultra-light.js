@@ -4,7 +4,7 @@ function parseHTMLString(htmlString) {
     const trimmed = htmlString.trim();
     const svgTags = ['svg', 'line', 'circle', 'rect', 'path', 'polygon', 'polyline',
         'ellipse', 'text', 'g', 'defs', 'use', 'symbol', 'marker',
-        'clipPath', 'mask', 'pattern', 'linearGradient', 'radialGradient'];
+        'clipPath', 'mask', 'pattern', 'linearGradient', 'radialGradient', 'image'];
     const tagMatch = trimmed.match(/^<([a-z][a-z0-9]*)/i);
     const isSVGElement = tagMatch && svgTags.includes(tagMatch[1].toLowerCase());
     if (isSVGElement) {
