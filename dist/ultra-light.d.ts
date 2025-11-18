@@ -1,4 +1,4 @@
-import type { UltraStateReturn, UltraContextReturn, Route, UltraLinkProps, EventHandler, Trigger, UltraComponentProps, ActivityProps, CleanupFunction, ElementWithCleanup, AnchorWithCleanup, ContainerWithCleanup } from './types.ts';
+import { type UltraStateReturn, type UltraContextReturn, type Route, type UltraLinkProps, type EventHandler, type Trigger, type UltraComponentProps, type ActivityProps, type CleanupFunction, type ElementWithCleanup, type AnchorWithCleanup, type ContainerWithCleanup } from './types';
 export type { UltraStateReturn, UltraContextReturn, Route, UltraLinkProps, EventHandler, Trigger, UltraComponentProps, ActivityProps, CleanupFunction, ElementWithCleanup, AnchorWithCleanup, ContainerWithCleanup };
 export declare function ultraState<T>(initialValue: T): [
     () => T,

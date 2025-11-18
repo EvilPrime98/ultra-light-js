@@ -40,13 +40,13 @@ export interface UltraComponentProps {
     component: string | HTMLElement | DocumentFragment;
     eventHandlers?: EventHandler[];
     styles?: Partial<CSSStyleDeclaration>;
-    children?: (string | HTMLElement | Node | DocumentFragment)[];
+    children?: (string | HTMLElement | Node | DocumentFragment | ElementWithCleanup)[];
     trigger?: Trigger[];
     cleanup?: CleanupFunction[];
 }
 
 export interface ActivityProps {
-    component: string | HTMLElement | DocumentFragment;
+    component: string | HTMLElement | DocumentFragment | ElementWithCleanup;
     stateOn: () => boolean;
     subscriber: (fn: () => void) => () => void;
     invert?: boolean;
@@ -67,4 +67,8 @@ export interface AnchorWithCleanup extends HTMLAnchorElement {
 
 export interface ContainerWithCleanup extends HTMLDivElement {
     _cleanup?: CleanupFunction;
+}
+
+export function hasCleanup(element: HTMLElement | Node): element is ElementWithCleanup {
+    return '_cleanup' in element;
 }

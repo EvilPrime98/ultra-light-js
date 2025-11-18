@@ -1,3 +1,4 @@
+import { hasCleanup } from './types';
 function parseHTMLString(htmlString) {
     if (typeof htmlString !== 'string')
         return htmlString;
@@ -304,6 +305,9 @@ export function UltraComponent({ component, eventHandlers = [], styles = {}, chi
         const childElement = parseHTMLString(child);
         if (childElement) {
             node.appendChild(childElement);
+            if (hasCleanup(childElement)) {
+                cleanupFunctions.push(childElement._cleanup);
+            }
         }
     });
     trigger.forEach(t => {

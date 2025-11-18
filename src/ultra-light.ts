@@ -1,18 +1,19 @@
-import type {
-    UltraStateReturn,
-    UltraContextReturn,
-    RouteMatch,
-    Route,
-    UltraLinkProps,
-    EventHandler,
-    Trigger,
-    UltraComponentProps,
-    ActivityProps,
-    CleanupFunction,
-    ElementWithCleanup,
-    AnchorWithCleanup,
-    ContainerWithCleanup
-} from './types.ts';
+import {
+    type UltraStateReturn,
+    type UltraContextReturn,
+    type RouteMatch,
+    type Route,
+    type UltraLinkProps,
+    type EventHandler,
+    type Trigger,
+    type UltraComponentProps,
+    type ActivityProps,
+    type CleanupFunction,
+    type ElementWithCleanup,
+    type AnchorWithCleanup,
+    type ContainerWithCleanup,
+    hasCleanup
+} from './types';
 
 export type {
     UltraStateReturn,
@@ -30,7 +31,7 @@ export type {
 }
 
 function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement | Node | null {
-    if (typeof htmlString !== 'string') return htmlString;       
+    if (typeof htmlString !== 'string') return htmlString;
     const trimmed = htmlString.trim();
     const svgTags = [
         'svg', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'rect', 'path',
@@ -51,14 +52,14 @@ function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement |
         'a', 'view', 'script', 'style',
         'color-profile',
         'switch', 'cursor'
-    ];  
+    ];
     const tagMatch = trimmed.match(/^<([a-z][a-z0-9-]*)/i);
-    const isSVGElement = tagMatch && svgTags.includes(tagMatch[1].toLowerCase());   
+    const isSVGElement = tagMatch && svgTags.includes(tagMatch[1].toLowerCase());
     if (isSVGElement) {
         const temp = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         temp.innerHTML = trimmed;
         return temp.firstChild;
-    }  
+    }
     const template = document.createElement('template');
     template.innerHTML = trimmed;
     return template.content.firstChild;
@@ -398,6 +399,9 @@ export function UltraComponent({
         const childElement = parseHTMLString(child);
         if (childElement) {
             node.appendChild(childElement);
+            if (hasCleanup(childElement)) {
+                cleanupFunctions.push(childElement._cleanup!);
+            }
         }
     });
 
@@ -455,7 +459,7 @@ export function Activity({
         console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
         type = 'display';
     }
-    
+
     const element = parseHTMLString(component) as ElementWithCleanup;
 
     if (!element) {
@@ -468,7 +472,7 @@ export function Activity({
     const update = (): void => {
         try {
             const current = invert ? !stateOn() : stateOn();
-            
+
             if (type === 'display') {
                 (element as HTMLElement).style.display = current ? '' : 'none';
             } else if (type === 'visibility') {
