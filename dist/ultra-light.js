@@ -224,11 +224,6 @@ export function UltraRouter(...routes) {
         window.removeEventListener('popstate', handler);
     };
     container._cleanup = () => {
-        cleanup();
-        if (currentCleanup)
-            currentCleanup();
-    };
-    container._cleanup = () => {
         if (cleanup)
             cleanup();
         if (currentCleanup)
@@ -344,7 +339,7 @@ export function UltraComponent({ component, eventHandlers = [], styles = {}, chi
     };
     return node;
 }
-export function Activity({ component, stateOn, subscriber, invert = false, trigger = [], type = 'display', cleanup = [] }) {
+export function UltraActivity({ component, stateOn, subscriber, invert = false, trigger = [], type = 'display', cleanup = [] }) {
     const supportedTypes = ['display', 'visibility'];
     if (!supportedTypes.includes(type)) {
         console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
