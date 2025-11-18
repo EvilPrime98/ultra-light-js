@@ -109,36 +109,50 @@ export function ultraState<T>(initialValue: T): [
 }
 
 export function ultraEffect(
-    fn: () => void | Promise<void>,
-    subscriberArray: Array<(fn: () => void) => () => void>
+    fn: () => void | CleanupFunction | Promise<void | CleanupFunction>,
+    subscriberArray: Array<(callback: () => void) => () => void>
 ): CleanupFunction {
-    const fnExecution = async (): Promise<void> => {
+
+    let mainCleanup: CleanupFunction | null = null;
+
+    const runFn = async () => {
         try {
-            await fn();
+            const result = await fn();
+            if (typeof result === "function") {
+                mainCleanup = result;
+            }
         } catch (error) {
-            console.error('Error en ultraEffect:', error);
+            console.error("Error en ultraEffect:", error);
         }
     };
 
-    fnExecution();
+    runFn();
 
     const unsubscribers = subscriberArray.map(subscriber => {
         try {
-            return subscriber(fn);
+            return subscriber(runFn);
         } catch (error) {
-            console.error('Error al suscribir en ultraEffect:', error);
+            console.error("Error al suscribir en ultraEffect:", error);
             return null;
         }
     });
 
-    return () => {
-        unsubscribers.forEach(unsub => {
+    return async () => {
+        if (mainCleanup) {
             try {
-                unsub && unsub();
+                await mainCleanup();
             } catch (error) {
-                console.error('Error al limpiar ultraEffect:', error);
+                console.error("Error al ejecutar cleanup principal en ultraEffect:", error);
             }
-        });
+        }
+        for (const unsub of unsubscribers) {
+            if (!unsub) continue;
+            try {
+                await Promise.resolve(unsub());
+            } catch (error) {
+                console.error("Error al limpiar ultraEffect:", error);
+            }
+        }
     };
 }
 
@@ -344,8 +358,10 @@ export function UltraComponent({
     eventHandlers = [],
     styles = {},
     children = [],
-    trigger = []
+    trigger = [],
+    cleanup = []
 }: UltraComponentProps): ElementWithCleanup {
+
     const node = parseHTMLString(component) as ElementWithCleanup;
 
     if (!node) {
@@ -355,6 +371,7 @@ export function UltraComponent({
 
     const cleanupFunctions: CleanupFunction[] = [];
 
+    //add cleanup functions for event handlers
     if (eventHandlers.length > 0) {
         eventHandlers.forEach(eventHandler => {
             const { eventType, eventCallback } = eventHandler;
@@ -367,6 +384,7 @@ export function UltraComponent({
         });
     }
 
+    //add styles
     Object.keys(styles).forEach(key => {
         try {
             (node as HTMLElement).style[key as any] = styles[key as keyof CSSStyleDeclaration] as string;
@@ -375,6 +393,7 @@ export function UltraComponent({
         }
     });
 
+    //add children
     children.forEach(child => {
         const childElement = parseHTMLString(child);
         if (childElement) {
@@ -382,6 +401,7 @@ export function UltraComponent({
         }
     });
 
+    //add cleanup functions for triggers
     trigger.forEach(t => {
         const { subscriber, subscriberFunction } = t;
         if (subscriber && subscriberFunction) {
@@ -396,6 +416,16 @@ export function UltraComponent({
         }
     });
 
+    //add special cleanup function 
+    cleanup.forEach(fn => {
+        try {
+            cleanupFunctions.push(fn);
+        } catch (error) {
+            console.error('Error añadiendo cleanup de UltraComponent:', error);
+        }
+    });
+
+    //add cleanup function for node
     node._cleanup = () => {
         cleanupFunctions.forEach(cleanup => {
             try {
@@ -415,7 +445,8 @@ export function Activity({
     subscriber,
     invert = false,
     trigger = [],
-    type = 'display'
+    type = 'display',
+    cleanup = []
 }: ActivityProps): ElementWithCleanup {
 
     const supportedTypes = ['display', 'visibility'];
@@ -466,6 +497,14 @@ export function Activity({
             } catch (error) {
                 console.error('Error en trigger de Activity:', error);
             }
+        }
+    });
+
+    cleanup.forEach(fn => {
+        try {
+            cleanupFunctions.push(fn);
+        } catch (error) {
+            console.error('Error añadiendo cleanup de Activity:', error);
         }
     });
 

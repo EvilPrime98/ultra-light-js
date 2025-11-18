@@ -69,33 +69,47 @@ export function ultraState(initialValue) {
     ];
 }
 export function ultraEffect(fn, subscriberArray) {
-    const fnExecution = async () => {
+    let mainCleanup = null;
+    const runFn = async () => {
         try {
-            await fn();
+            const result = await fn();
+            if (typeof result === "function") {
+                mainCleanup = result;
+            }
         }
         catch (error) {
-            console.error('Error en ultraEffect:', error);
+            console.error("Error en ultraEffect:", error);
         }
     };
-    fnExecution();
+    runFn();
     const unsubscribers = subscriberArray.map(subscriber => {
         try {
-            return subscriber(fn);
+            return subscriber(runFn);
         }
         catch (error) {
-            console.error('Error al suscribir en ultraEffect:', error);
+            console.error("Error al suscribir en ultraEffect:", error);
             return null;
         }
     });
-    return () => {
-        unsubscribers.forEach(unsub => {
+    return async () => {
+        if (mainCleanup) {
             try {
-                unsub && unsub();
+                await mainCleanup();
             }
             catch (error) {
-                console.error('Error al limpiar ultraEffect:', error);
+                console.error("Error al ejecutar cleanup principal en ultraEffect:", error);
             }
-        });
+        }
+        for (const unsub of unsubscribers) {
+            if (!unsub)
+                continue;
+            try {
+                await Promise.resolve(unsub());
+            }
+            catch (error) {
+                console.error("Error al limpiar ultraEffect:", error);
+            }
+        }
     };
 }
 export function UltraContext(initialValue) {
@@ -260,7 +274,7 @@ export function UltraFragment(...children) {
     });
     return fragment;
 }
-export function UltraComponent({ component, eventHandlers = [], styles = {}, children = [], trigger = [] }) {
+export function UltraComponent({ component, eventHandlers = [], styles = {}, children = [], trigger = [], cleanup = [] }) {
     const node = parseHTMLString(component);
     if (!node) {
         console.error('UltraComponent: No se pudo crear el nodo');
@@ -306,6 +320,14 @@ export function UltraComponent({ component, eventHandlers = [], styles = {}, chi
             }
         }
     });
+    cleanup.forEach(fn => {
+        try {
+            cleanupFunctions.push(fn);
+        }
+        catch (error) {
+            console.error('Error añadiendo cleanup de UltraComponent:', error);
+        }
+    });
     node._cleanup = () => {
         cleanupFunctions.forEach(cleanup => {
             try {
@@ -318,7 +340,7 @@ export function UltraComponent({ component, eventHandlers = [], styles = {}, chi
     };
     return node;
 }
-export function Activity({ component, stateOn, subscriber, invert = false, trigger = [], type = 'display' }) {
+export function Activity({ component, stateOn, subscriber, invert = false, trigger = [], type = 'display', cleanup = [] }) {
     const supportedTypes = ['display', 'visibility'];
     if (!supportedTypes.includes(type)) {
         console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
@@ -361,6 +383,14 @@ export function Activity({ component, stateOn, subscriber, invert = false, trigg
             catch (error) {
                 console.error('Error en trigger de Activity:', error);
             }
+        }
+    });
+    cleanup.forEach(fn => {
+        try {
+            cleanupFunctions.push(fn);
+        }
+        catch (error) {
+            console.error('Error añadiendo cleanup de Activity:', error);
         }
     });
     element._cleanup = () => {

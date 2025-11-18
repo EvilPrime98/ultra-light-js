@@ -27,7 +27,7 @@ export interface UltraLinkProps {
 }
 
 export interface EventHandler {
-    eventType: string;
+    eventType: keyof HTMLElementEventMap;
     eventCallback: (event: Event) => void;
 }
 
@@ -42,6 +42,7 @@ export interface UltraComponentProps {
     styles?: Partial<CSSStyleDeclaration>;
     children?: (string | HTMLElement | Node | DocumentFragment)[];
     trigger?: Trigger[];
+    cleanup?: CleanupFunction[];
 }
 
 export interface ActivityProps {
@@ -51,9 +52,10 @@ export interface ActivityProps {
     invert?: boolean;
     trigger?: Trigger[];
     type?: 'display' | 'visibility';
+    cleanup?: CleanupFunction[];
 }
 
-export type CleanupFunction = () => void;
+export type CleanupFunction = () => void | Promise<void>;
 
 export interface ElementWithCleanup extends HTMLElement {
     _cleanup?: CleanupFunction;
