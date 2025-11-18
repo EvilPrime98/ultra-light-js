@@ -1,33 +1,33 @@
 import {
     type UltraStateReturn,
     type UltraContextReturn,
-    type RouteMatch,
-    type Route,
+    type UltraRouteMatch,
+    type UltraRoute,
     type UltraLinkProps,
-    type EventHandler,
-    type Trigger,
+    type UltraEventHandler,
+    type UltraTrigger,
     type UltraComponentProps,
-    type ActivityProps,
-    type CleanupFunction,
-    type ElementWithCleanup,
-    type AnchorWithCleanup,
-    type ContainerWithCleanup,
+    type UltraActivityProps,
+    type UltraCleanupFunction,
+    type UltraLightElement,
+    type UltraLightAnchor,
+    type UltraLightDiv,
     hasCleanup
 } from './types';
 
 export type {
     UltraStateReturn,
     UltraContextReturn,
-    Route,
+    UltraRoute,
     UltraLinkProps,
-    EventHandler,
-    Trigger,
+    UltraEventHandler,
+    UltraTrigger,
     UltraComponentProps,
-    ActivityProps,
-    CleanupFunction,
-    ElementWithCleanup,
-    AnchorWithCleanup,
-    ContainerWithCleanup
+    UltraActivityProps,
+    UltraCleanupFunction,
+    UltraLightElement,
+    UltraLightAnchor,
+    UltraLightDiv
 }
 
 function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement | Node | null {
@@ -110,11 +110,11 @@ export function ultraState<T>(initialValue: T): [
 }
 
 export function ultraEffect(
-    fn: () => void | CleanupFunction | Promise<void | CleanupFunction>,
+    fn: () => void | UltraCleanupFunction | Promise<void | UltraCleanupFunction>,
     subscriberArray: Array<(callback: () => void) => () => void>
-): CleanupFunction {
+): UltraCleanupFunction {
 
-    let mainCleanup: CleanupFunction | null = null;
+    let mainCleanup: UltraCleanupFunction | null = null;
 
     const runFn = async () => {
         try {
@@ -199,7 +199,7 @@ export function ultraQueryParams(): Record<string, string> {
     return params;
 }
 
-function matchRoute(routePath: string, currentPath: string): RouteMatch {
+function matchRoute(routePath: string, currentPath: string): UltraRouteMatch {
     if (routePath === currentPath) {
         return { params: {}, matched: true };
     }
@@ -227,17 +227,17 @@ function matchRoute(routePath: string, currentPath: string): RouteMatch {
     return { params, matched: true };
 }
 
-export function UltraRouter(...routes: Route[]): ContainerWithCleanup {
+export function UltraRouter(...routes: UltraRoute[]): UltraLightDiv {
     const paths = routes.map(r => r.path);
     const duplicates = paths.filter((p, i) => paths.indexOf(p) !== i && p !== '/*');
     if (duplicates.length > 0) {
         console.warn('UltraRouter: Rutas duplicadas detectadas:', duplicates);
     }
 
-    const container = document.createElement('div') as ContainerWithCleanup;
+    const container = document.createElement('div') as UltraLightDiv;
     container.classList.add('browser-router');
 
-    let currentCleanup: CleanupFunction | null = null;
+    let currentCleanup: UltraCleanupFunction | null = null;
 
     const renderRoute = (): void => {
         if (currentCleanup) {
@@ -276,8 +276,8 @@ export function UltraRouter(...routes: Route[]): ContainerWithCleanup {
         if (targetComponent) {
             container.appendChild(targetComponent);
 
-            if ((targetComponent as ElementWithCleanup)._cleanup) {
-                currentCleanup = (targetComponent as ElementWithCleanup)._cleanup!;
+            if ((targetComponent as UltraLightElement)._cleanup) {
+                currentCleanup = (targetComponent as UltraLightElement)._cleanup!;
             }
         }
     };
@@ -292,11 +292,6 @@ export function UltraRouter(...routes: Route[]): ContainerWithCleanup {
     };
 
     container._cleanup = () => {
-        cleanup();
-        if (currentCleanup) currentCleanup();
-    };
-
-    container._cleanup = () => {
         if (cleanup) cleanup();
         if (currentCleanup) currentCleanup();
     };
@@ -304,12 +299,12 @@ export function UltraRouter(...routes: Route[]): ContainerWithCleanup {
     return container;
 }
 
-export function UltraLink({ href, child }: UltraLinkProps): ElementWithCleanup {
+export function UltraLink({ href, child }: UltraLinkProps): UltraLightElement {
     if (!href) {
         console.warn('UltraLink: href is required');
     }
 
-    const link = document.createElement('a') as AnchorWithCleanup;
+    const link = document.createElement('a') as UltraLightAnchor;
     link.href = href;
 
     const clickHandler = (e: MouseEvent): void => {
@@ -361,16 +356,16 @@ export function UltraComponent({
     children = [],
     trigger = [],
     cleanup = []
-}: UltraComponentProps): ElementWithCleanup {
+}: UltraComponentProps): UltraLightElement {
 
-    const node = parseHTMLString(component) as ElementWithCleanup;
+    const node = parseHTMLString(component) as UltraLightElement;
 
     if (!node) {
         console.error('UltraComponent: No se pudo crear el nodo');
-        return document.createElement('div') as ElementWithCleanup;
+        return document.createElement('div') as UltraLightElement;
     }
 
-    const cleanupFunctions: CleanupFunction[] = [];
+    const cleanupFunctions: UltraCleanupFunction[] = [];
 
     //add cleanup functions for event handlers
     if (eventHandlers.length > 0) {
@@ -443,7 +438,7 @@ export function UltraComponent({
     return node;
 }
 
-export function Activity({
+export function UltraActivity({
     component,
     stateOn,
     subscriber,
@@ -451,7 +446,7 @@ export function Activity({
     trigger = [],
     type = 'display',
     cleanup = []
-}: ActivityProps): ElementWithCleanup {
+}: UltraActivityProps): UltraLightElement {
 
     const supportedTypes = ['display', 'visibility'];
 
@@ -460,14 +455,14 @@ export function Activity({
         type = 'display';
     }
 
-    const element = parseHTMLString(component) as ElementWithCleanup;
+    const element = parseHTMLString(component) as UltraLightElement;
 
     if (!element) {
         console.error('Activity: No se pudo crear el elemento');
-        return document.createElement('div') as ElementWithCleanup;
+        return document.createElement('div') as UltraLightElement;
     }
 
-    const cleanupFunctions: CleanupFunction[] = [];
+    const cleanupFunctions: UltraCleanupFunction[] = [];
 
     const update = (): void => {
         try {

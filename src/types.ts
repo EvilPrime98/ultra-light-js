@@ -10,13 +10,13 @@ export interface UltraContextReturn<T> {
     getValue: () => T;
 }
 
-export interface RouteMatch {
+export interface UltraRouteMatch {
     params: Record<string, string>;
     matched: boolean;
     isWildcard?: boolean;
 }
 
-export interface Route {
+export interface UltraRoute {
     path: string;
     component: (params?: Record<string, string>) => string | HTMLElement | DocumentFragment;
 }
@@ -26,49 +26,49 @@ export interface UltraLinkProps {
     child: string | HTMLElement | DocumentFragment;
 }
 
-export interface EventHandler {
-    eventType: keyof HTMLElementEventMap;
-    eventCallback: (event: Event) => void;
+export interface UltraEventHandler<K extends keyof HTMLElementEventMap = keyof HTMLElementEventMap> {
+    eventType: K;
+    eventCallback: (event: HTMLElementEventMap[K]) => void;
 }
 
-export interface Trigger<T = HTMLElement> {
+export interface UltraTrigger<T = HTMLElement> {
     subscriber: (fn: (value: any) => void) => () => void;
     subscriberFunction: (node: T) => void;
 }
 
 export interface UltraComponentProps {
     component: string | HTMLElement | DocumentFragment;
-    eventHandlers?: EventHandler[];
+    eventHandlers?: UltraEventHandler[];
     styles?: Partial<CSSStyleDeclaration>;
-    children?: (string | HTMLElement | Node | DocumentFragment | ElementWithCleanup)[];
-    trigger?: Trigger[];
-    cleanup?: CleanupFunction[];
+    children?: (string | HTMLElement | Node | DocumentFragment | UltraLightElement)[];
+    trigger?: UltraTrigger[];
+    cleanup?: UltraCleanupFunction[];
 }
 
-export interface ActivityProps {
-    component: string | HTMLElement | DocumentFragment | ElementWithCleanup;
+export interface UltraActivityProps {
+    component: string | HTMLElement | DocumentFragment | UltraLightElement;
     stateOn: () => boolean;
     subscriber: (fn: () => void) => () => void;
     invert?: boolean;
-    trigger?: Trigger[];
+    trigger?: UltraTrigger[];
     type?: 'display' | 'visibility';
-    cleanup?: CleanupFunction[];
+    cleanup?: UltraCleanupFunction[];
 }
 
-export type CleanupFunction = () => void | Promise<void>;
+export type UltraCleanupFunction = () => void | Promise<void>;
 
-export interface ElementWithCleanup extends HTMLElement {
-    _cleanup?: CleanupFunction;
+export interface UltraLightElement extends HTMLElement {
+    _cleanup?: UltraCleanupFunction;
 }
 
-export interface AnchorWithCleanup extends HTMLAnchorElement {
-    _cleanup?: CleanupFunction;
+export interface UltraLightAnchor extends HTMLAnchorElement {
+    _cleanup?: UltraCleanupFunction;
 }
 
-export interface ContainerWithCleanup extends HTMLDivElement {
-    _cleanup?: CleanupFunction;
+export interface UltraLightDiv extends HTMLDivElement {
+    _cleanup?: UltraCleanupFunction;
 }
 
-export function hasCleanup(element: HTMLElement | Node): element is ElementWithCleanup {
+export function hasCleanup(element: HTMLElement | Node): element is UltraLightElement {
     return '_cleanup' in element;
 }
