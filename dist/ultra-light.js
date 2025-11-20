@@ -49,6 +49,8 @@ export function ultraState(initialValue) {
     let value = initialValue;
     const subscribers = new Set();
     const setValue = (newValue) => {
+        if (typeof value !== 'object' && value === newValue)
+            return;
         value = newValue;
         subscribers.forEach(fn => {
             try {
@@ -270,24 +272,19 @@ export function UltraFragment(...children) {
     });
     return fragment;
 }
-export function UltraComponent({ component, eventHandlers = [], styles = {}, children = [], trigger = [], cleanup = [] }) {
+export function UltraComponent({ component, events = {}, styles = {}, children = [], trigger = [], cleanup = [] }) {
     const node = parseHTMLString(component);
     if (!node) {
         console.error('UltraComponent: No se pudo crear el nodo');
         return document.createElement('div');
     }
     const cleanupFunctions = [];
-    if (eventHandlers.length > 0) {
-        eventHandlers.forEach(eventHandler => {
-            const { eventType, eventCallback } = eventHandler;
-            if (eventType && eventCallback) {
-                node.addEventListener(eventType, eventCallback);
-                cleanupFunctions.push(() => {
-                    node.removeEventListener(eventType, eventCallback);
-                });
-            }
+    Object.keys(events).forEach((event) => {
+        node.addEventListener(event, () => events[event]);
+        cleanupFunctions.push(() => {
+            node.removeEventListener(event, () => events[event]);
         });
-    }
+    });
     Object.keys(styles).forEach(key => {
         try {
             node.style[key] = styles[key];
@@ -306,7 +303,7 @@ export function UltraComponent({ component, eventHandlers = [], styles = {}, chi
         }
     });
     trigger.forEach(t => {
-        const { subscriber, subscriberFunction } = t;
+        const { subscriber, triggerFunction: subscriberFunction } = t;
         if (subscriber && subscriberFunction) {
             try {
                 const unsubscribe = subscriber(() => subscriberFunction(node));
@@ -339,7 +336,7 @@ export function UltraComponent({ component, eventHandlers = [], styles = {}, chi
     };
     return node;
 }
-export function UltraActivity({ component, stateOn, subscriber, invert = false, trigger = [], type = 'display', cleanup = [] }) {
+export function UltraActivity({ component, mode, trigger = [], type = 'display', cleanup = [] }) {
     const supportedTypes = ['display', 'visibility'];
     if (!supportedTypes.includes(type)) {
         console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
@@ -353,7 +350,7 @@ export function UltraActivity({ component, stateOn, subscriber, invert = false, 
     const cleanupFunctions = [];
     const update = () => {
         try {
-            const current = invert ? !stateOn() : stateOn();
+            const current = mode.state();
             if (type === 'display') {
                 element.style.display = current ? '' : 'none';
             }
@@ -365,16 +362,16 @@ export function UltraActivity({ component, stateOn, subscriber, invert = false, 
             console.error('Error al actualizar Activity:', error);
         }
     };
-    const unsubscribe = subscriber(update);
+    const unsubscribe = mode.subscriber(update);
     if (unsubscribe) {
         cleanupFunctions.push(unsubscribe);
     }
     update();
     trigger.forEach(t => {
-        const { subscriber, subscriberFunction } = t;
-        if (subscriber && subscriberFunction) {
+        const { subscriber, triggerFunction } = t;
+        if (subscriber && triggerFunction) {
             try {
-                const unsub = subscriber(() => subscriberFunction(element));
+                const unsub = subscriber(() => triggerFunction(element));
                 if (unsub) {
                     cleanupFunctions.push(unsub);
                 }

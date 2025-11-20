@@ -4,7 +4,6 @@ import {
     type UltraRouteMatch,
     type UltraRoute,
     type UltraLinkProps,
-    type UltraEventHandler,
     type UltraTrigger,
     type UltraComponentProps,
     type UltraActivityProps,
@@ -20,7 +19,6 @@ export type {
     UltraContextReturn,
     UltraRoute,
     UltraLinkProps,
-    UltraEventHandler,
     UltraTrigger,
     UltraComponentProps,
     UltraActivityProps,
@@ -87,6 +85,7 @@ export function ultraState<T>(initialValue: T): [
     const subscribers = new Set<(value: T) => void>();
 
     const setValue = (newValue: T): void => {
+        if (typeof value !== 'object' && value === newValue) return;
         value = newValue;
         subscribers.forEach(fn => {
             try {
@@ -337,6 +336,7 @@ export function UltraLink({ href, child }: UltraLinkProps): UltraLightElement {
 }
 
 export function UltraFragment(...children: (string | HTMLElement | Node)[]): DocumentFragment {
+
     const fragment = document.createDocumentFragment();
 
     children.forEach(component => {
@@ -347,11 +347,12 @@ export function UltraFragment(...children: (string | HTMLElement | Node)[]): Doc
     });
 
     return fragment;
+    
 }
 
 export function UltraComponent({
     component,
-    eventHandlers = [],
+    events = {},
     styles = {},
     children = [],
     trigger = [],
@@ -366,21 +367,18 @@ export function UltraComponent({
     }
 
     const cleanupFunctions: UltraCleanupFunction[] = [];
-
+    
     //add cleanup functions for event handlers
-    if (eventHandlers.length > 0) {
-        eventHandlers.forEach(eventHandler => {
-            const { eventType, eventCallback } = eventHandler;
-            if (eventType && eventCallback) {
-                (node as HTMLElement).addEventListener(eventType, eventCallback);
-                cleanupFunctions.push(() => {
-                    (node as HTMLElement).removeEventListener(eventType, eventCallback);
-                });
-            }
-        });
-    }
+
+    (Object.keys(events) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
+        (node as HTMLElement).addEventListener(event, () => events[event]);
+        cleanupFunctions.push(() => {
+            (node as HTMLElement).removeEventListener(event, () => events[event]);
+        });   
+    });
 
     //add styles
+
     Object.keys(styles).forEach(key => {
         try {
             (node as HTMLElement).style[key as any] = styles[key as keyof CSSStyleDeclaration] as string;
@@ -390,6 +388,7 @@ export function UltraComponent({
     });
 
     //add children
+    
     children.forEach(child => {
         const childElement = parseHTMLString(child);
         if (childElement) {
@@ -401,8 +400,9 @@ export function UltraComponent({
     });
 
     //add cleanup functions for triggers
+
     trigger.forEach(t => {
-        const { subscriber, subscriberFunction } = t;
+        const { subscriber, triggerFunction: subscriberFunction } = t;
         if (subscriber && subscriberFunction) {
             try {
                 const unsubscribe = subscriber(() => subscriberFunction(node as HTMLElement));
@@ -415,7 +415,8 @@ export function UltraComponent({
         }
     });
 
-    //add special cleanup function 
+    //add special cleanup function
+
     cleanup.forEach(fn => {
         try {
             cleanupFunctions.push(fn);
@@ -425,6 +426,7 @@ export function UltraComponent({
     });
 
     //add cleanup function for node
+
     node._cleanup = () => {
         cleanupFunctions.forEach(cleanup => {
             try {
@@ -436,13 +438,12 @@ export function UltraComponent({
     };
 
     return node;
+
 }
 
 export function UltraActivity({
     component,
-    stateOn,
-    subscriber,
-    invert = false,
+    mode,
     trigger = [],
     type = 'display',
     cleanup = []
@@ -466,7 +467,7 @@ export function UltraActivity({
 
     const update = (): void => {
         try {
-            const current = invert ? !stateOn() : stateOn();
+            const current = mode.state();
 
             if (type === 'display') {
                 (element as HTMLElement).style.display = current ? '' : 'none';
@@ -478,7 +479,8 @@ export function UltraActivity({
         }
     };
 
-    const unsubscribe = subscriber(update);
+    const unsubscribe = mode.subscriber(update);
+    
     if (unsubscribe) {
         cleanupFunctions.push(unsubscribe);
     }
@@ -486,10 +488,10 @@ export function UltraActivity({
     update();
 
     trigger.forEach(t => {
-        const { subscriber, subscriberFunction } = t;
-        if (subscriber && subscriberFunction) {
+        const { subscriber, triggerFunction } = t;
+        if (subscriber && triggerFunction) {
             try {
-                const unsub = subscriber(() => subscriberFunction(element as HTMLElement));
+                const unsub = subscriber(() => triggerFunction(element as HTMLElement));
                 if (unsub) {
                     cleanupFunctions.push(unsub);
                 }
