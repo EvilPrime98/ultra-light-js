@@ -121,7 +121,9 @@ export function UltraContext(initialValue) {
     }
     let value = initialValue;
     const subscribers = new Set();
-    const provide = (newValue) => {
+    const setValue = (newValue) => {
+        if (typeof value !== 'object' && value === newValue)
+            return;
         value = newValue;
         subscribers.forEach(fn => {
             try {
@@ -138,9 +140,9 @@ export function UltraContext(initialValue) {
         return () => subscribers.delete(fn);
     };
     return {
-        provide,
+        set: setValue,
+        get: getValue,
         subscribe,
-        getValue
     };
 }
 export function ultraQueryParams() {
@@ -272,18 +274,19 @@ export function UltraFragment(...children) {
     });
     return fragment;
 }
-export function UltraComponent({ component, events = {}, styles = {}, children = [], trigger = [], cleanup = [] }) {
+export function UltraComponent({ component, eventHandler = {}, styles = {}, children = [], trigger = [], cleanup = [] }) {
     const node = parseHTMLString(component);
     if (!node) {
         console.error('UltraComponent: No se pudo crear el nodo');
         return document.createElement('div');
     }
     const cleanupFunctions = [];
-    Object.keys(events).forEach((event) => {
-        node.addEventListener(event, () => events[event]);
-        cleanupFunctions.push(() => {
-            node.removeEventListener(event, () => events[event]);
-        });
+    Object.keys(eventHandler).forEach((event) => {
+        const handler = eventHandler[event];
+        if (handler) {
+            node.addEventListener(event, handler);
+            cleanupFunctions.push(() => node.removeEventListener(event, handler));
+        }
     });
     Object.keys(styles).forEach(key => {
         try {

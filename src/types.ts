@@ -9,9 +9,9 @@ export interface StateSubscriber<T> {
 export type UltraStateReturn<T> = StateSubscriber<T>;
 
 export interface UltraContextReturn<T> {
-    provide: (newValue: T) => void;
+    set: (newValue: T) => void;
+    get: () => T;
     subscribe: (fn: (value: T) => void) => () => void;
-    getValue: () => T;
 }
 
 // Routing
@@ -48,26 +48,6 @@ export interface UltraLightElement extends HTMLElement {
 export interface UltraTrigger<T = HTMLElement> {
     subscriber: (fn: (value: any) => void) => () => void;
     triggerFunction: (node: T) => void;
-}
-
-export interface UltraComponentProps {
-    component: UltraRenderableElement;
-    events?: Partial<Record<keyof HTMLElementEventMap, EventListenerOrEventListenerObject>>;
-    styles?: Partial<CSSStyleDeclaration>;
-    children?: (UltraRenderableElement | Node | UltraLightElement)[];
-    trigger?: UltraTrigger[];
-    cleanup?: UltraCleanupFunction[];
-}
-
-export interface UltraActivityProps {
-    component: UltraRenderableElement | UltraLightElement;
-    mode: {
-        state: () => boolean;
-        subscriber: (fn: () => void) => () => void;
-    }
-    trigger?: UltraTrigger[];
-    type?: 'display' | 'visibility';
-    cleanup?: UltraCleanupFunction[];
 }
 
 // Type Guards & Utilities

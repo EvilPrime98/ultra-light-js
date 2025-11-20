@@ -5,13 +5,12 @@ import {
     type UltraRoute,
     type UltraLinkProps,
     type UltraTrigger,
-    type UltraComponentProps,
-    type UltraActivityProps,
     type UltraCleanupFunction,
     type UltraLightElement,
     type UltraLightAnchor,
     type UltraLightDiv,
-    hasCleanup
+    hasCleanup,
+    UltraRenderableElement
 } from './types';
 
 export type {
@@ -20,8 +19,6 @@ export type {
     UltraRoute,
     UltraLinkProps,
     UltraTrigger,
-    UltraComponentProps,
-    UltraActivityProps,
     UltraCleanupFunction,
     UltraLightElement,
     UltraLightAnchor,
@@ -157,6 +154,7 @@ export function ultraEffect(
 }
 
 export function UltraContext<T>(initialValue: T): UltraContextReturn<T> {
+    
     if (initialValue === undefined) {
         console.warn('UltraContext: initialValue is undefined');
     }
@@ -164,7 +162,8 @@ export function UltraContext<T>(initialValue: T): UltraContextReturn<T> {
     let value = initialValue;
     const subscribers = new Set<(value: T) => void>();
 
-    const provide = (newValue: T): void => {
+    const setValue = (newValue: T): void => {
+        if (typeof value !== 'object' && value === newValue) return;
         value = newValue;
         subscribers.forEach(fn => {
             try {
@@ -183,10 +182,11 @@ export function UltraContext<T>(initialValue: T): UltraContextReturn<T> {
     };
 
     return {
-        provide,
+        set: setValue,
+        get: getValue,
         subscribe,
-        getValue
     };
+
 }
 
 export function ultraQueryParams(): Record<string, string> {
@@ -352,12 +352,19 @@ export function UltraFragment(...children: (string | HTMLElement | Node)[]): Doc
 
 export function UltraComponent({
     component,
-    events = {},
+    eventHandler = {},
     styles = {},
     children = [],
     trigger = [],
     cleanup = []
-}: UltraComponentProps): UltraLightElement {
+}: {
+    component: UltraRenderableElement;
+    eventHandler?: Partial<Record<keyof HTMLElementEventMap, EventListenerOrEventListenerObject>>;
+    styles?: Partial<CSSStyleDeclaration>;
+    children?: (UltraRenderableElement | Node | UltraLightElement)[];
+    trigger?: UltraTrigger[];
+    cleanup?: UltraCleanupFunction[];
+}): UltraLightElement {
 
     const node = parseHTMLString(component) as UltraLightElement;
 
@@ -370,11 +377,12 @@ export function UltraComponent({
     
     //add cleanup functions for event handlers
 
-    (Object.keys(events) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
-        (node as HTMLElement).addEventListener(event, () => events[event]);
-        cleanupFunctions.push(() => {
-            (node as HTMLElement).removeEventListener(event, () => events[event]);
-        });   
+    (Object.keys(eventHandler) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
+        const handler = eventHandler[event];
+        if (handler) {
+            node.addEventListener(event, handler);
+            cleanupFunctions.push(() => node.removeEventListener(event, handler));
+        }
     });
 
     //add styles
@@ -447,7 +455,16 @@ export function UltraActivity({
     trigger = [],
     type = 'display',
     cleanup = []
-}: UltraActivityProps): UltraLightElement {
+}: {
+    component: UltraRenderableElement | UltraLightElement;
+    mode: {
+    state: () => boolean;
+    subscriber: (fn: () => void) => () => void;
+    }
+    trigger?: UltraTrigger[];
+    type?: 'display' | 'visibility';
+    cleanup?: UltraCleanupFunction[];
+}): UltraLightElement {
 
     const supportedTypes = ['display', 'visibility'];
 
