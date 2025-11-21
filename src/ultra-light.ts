@@ -28,37 +28,35 @@ export type {
 function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement | Node | null {
     if (typeof htmlString !== 'string') return htmlString;
     const trimmed = htmlString.trim();
-    const svgTags = [
-        'svg', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'rect', 'path',
-        'text', 'tspan', 'tref', 'textPath', 'altGlyph', 'altGlyphDef', 'altGlyphItem', 'glyphRef',
-        'g', 'defs', 'symbol', 'use', 'marker', 'clipPath', 'mask', 'pattern',
+    const svgExclusiveTags = new Set([
+        'svg', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'rect', 'path', 'g',
+        'defs', 'symbol', 'use', 'marker', 'clipPath', 'mask', 'pattern',
         'linearGradient', 'radialGradient', 'meshGradient', 'stop', 'hatch', 'hatchpath',
-        'image', 'foreignObject',
         'animate', 'animateMotion', 'animateTransform', 'set', 'animateColor', 'mpath',
         'filter', 'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite',
         'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight',
         'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR',
         'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology',
         'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile',
-        'feTurbulence',
-        'font', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src',
-        'font-face-uri', 'glyph', 'hkern', 'missing-glyph', 'vkern',
-        'metadata', 'title', 'desc',
-        'a', 'view', 'script', 'style',
-        'color-profile',
-        'switch', 'cursor'
-    ];
+        'feTurbulence', 'view', 'font', 'glyph', 'missing-glyph', 'vkern', 'hkern',
+        'color-profile', 'switch', 'cursor'
+    ]);
+
     const tagMatch = trimmed.match(/^<([a-z][a-z0-9-]*)/i);
-    const isSVGElement = tagMatch && svgTags.includes(tagMatch[1].toLowerCase());
-    if (isSVGElement) {
+    const tag = tagMatch?.[1]?.toLowerCase();
+    if (!tag) return null;
+    const isSVGRoot = tag === 'svg';
+    const isSVGExclusive = svgExclusiveTags.has(tag);
+    if (isSVGRoot || isSVGExclusive) {
         const temp = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         temp.innerHTML = trimmed;
-        return temp.firstChild;
+        return temp.firstElementChild;
     }
     const template = document.createElement('template');
     template.innerHTML = trimmed;
-    return template.content.firstChild;
+    return template.content.firstElementChild;
 }
+
 
 function stableHash(str: string): string {
     let hash = 0;
