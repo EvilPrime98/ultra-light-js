@@ -78,7 +78,10 @@ export function ultraState<T>(initialValue: T): [
         console.warn('ultraState: initialValue is undefined');
     }
 
-    let value = initialValue;
+    let value = (typeof initialValue === 'object')
+    ? Object.freeze(initialValue)
+    : initialValue;
+
     const subscribers = new Set<(value: T) => void>();
 
     const setValue = (newValue: T): void => {
