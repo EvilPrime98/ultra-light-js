@@ -39,7 +39,7 @@ function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement |
         'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology',
         'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile',
         'feTurbulence', 'view', 'font', 'glyph', 'missing-glyph', 'vkern', 'hkern',
-        'color-profile', 'switch', 'cursor'
+        'color-profile', 'switch', 'cursor', 'image'
     ]);
 
     const tagMatch = trimmed.match(/^<([a-z][a-z0-9-]*)/i);
