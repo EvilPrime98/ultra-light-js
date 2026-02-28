@@ -1,0 +1,53 @@
+{
+  "name": "ultra-light.js",
+  "version": "1.0.17",
+  "description": "A lightweight JavaScript framework for building reactive, state-management, and SPA applications.",
+  "type": "module",
+  "types": "dist/ultra-light.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/ultra-light.d.ts",
+      "import": "./dist/ultra-light.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "vite ./test",
+    "build": "tsc",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "framework",
+    "reactive",
+    "state-management",
+    "router",
+    "components",
+    "lightweight",
+    "vanilla-js",
+    "typescript",
+    "spa",
+    "ui-framework"
+  ],
+  "author": "Amín Pérez <joseamin1998@gmail.com>",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EvilPrime98/ultra-light-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/EvilPrime98/ultra-light-js/issues"
+  },
+  "homepage": "https://github.com/EvilPrime98/ultra-light-js#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.2",
+    "globals": "^17.3.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.56.1",
+    "vite": "^7.2.4"
+  }
+}
