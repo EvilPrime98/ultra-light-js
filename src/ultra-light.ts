@@ -172,22 +172,29 @@ export function UltraContext<T>(
     }
     let value = initialValue;
     const subscribers = new Set<(value: T) => void>();
-    function checkOwnership(
-        node: UltraLightElement
+    function canReach(
+        candidate?: UltraLightElement
     ): boolean {
         if (!owner) return true;
-        if (!owner?.contains(node)) {
+        if (!candidate) return false;
+        if (!owner?.contains(candidate)) {
             console.warn('UltraContext: unreachable context');
             return false;
         }else{
             return true;
         }
     };
+    function getValue(
+        candidate?: UltraLightElement
+    ): T | undefined {
+        if (!canReach(candidate)) return;
+        return value;
+    }
     function setValue(
-        candidate: UltraLightElement,
-        newValue: T
+        newValue: T,
+        candidate?: UltraLightElement,
     ): void {
-        if (!checkOwnership(candidate)) return;
+        if (!canReach(candidate)) return;
         if (typeof value !== 'object' && value === newValue) return;
         value = newValue;
         subscribers.forEach(fn => {
@@ -198,17 +205,11 @@ export function UltraContext<T>(
             }
         });
     };
-    function getValue(
-        candidate: UltraLightElement
-    ): T {
-        if (!checkOwnership(candidate)) return value;
-        return value;
-    }
     function subscribe(
-        candidate: UltraLightElement,
-        fn: (value: T) => void
+        fn: (value: T) => void,
+        candidate?: UltraLightElement,
     ): (() => void){
-        if (!checkOwnership(candidate)) return () => {};
+        if (!canReach(candidate)) return () => {};
         subscribers.add(fn);
         return () => subscribers.delete(fn);
     };

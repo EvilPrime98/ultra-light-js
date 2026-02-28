@@ -7,9 +7,9 @@ export interface StateSubscriber<T> {
 export type UltraStateReturn<T> = StateSubscriber<T>;
 
 export interface UltraContextReturn<T> {
-    set: (candidate: UltraLightElement, newValue: T) => void;
-    get: (candidate: UltraLightElement) => T;
-    subscribe: (candidate: UltraLightElement, fn: (value: T) => void) => () => void;
+    set: (newValue: T, candidate?: UltraLightElement) => void;
+    get: (candidate?: UltraLightElement) => T | undefined;
+    subscribe: (fn: (value: T) => void, candidate?: UltraLightElement) => () => void;
     own: (newOwner: UltraLightElement) => void;
 }
 
