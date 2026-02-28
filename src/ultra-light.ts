@@ -186,8 +186,8 @@ export function UltraContext<T>(
     };
     function getValue(
         candidate?: UltraLightElement
-    ): T | undefined {
-        if (!canReach(candidate)) return;
+    ): T{
+        if (!canReach(candidate)) return "undefined" as T;
         return value;
     }
     function setValue(
