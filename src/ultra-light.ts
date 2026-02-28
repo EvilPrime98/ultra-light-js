@@ -259,8 +259,8 @@ function matchRoute(routePath: string, currentPath: string): UltraRouteMatch {
 
     const params: Record<string, string> = {};
     for (let i = 0; i < routeParts.length; i++) {
-        if (routeParts[i].startsWith(':')) {
-            params[routeParts[i].slice(1)] = pathParts[i];
+        if (routeParts[i]!.startsWith(':')) {
+            params[routeParts[i]!.slice(1)] = pathParts[i]!;
         } else if (routeParts[i] !== pathParts[i]) {
             return { matched: false, params: {} };
         }
@@ -814,7 +814,7 @@ export function ultraStyles(cssString: string): Record<string, string> {
     const classNames = new Set<string>();
 
     while ((match = classRegex.exec(cssString)) !== null) {
-        classNames.add(match[1]);
+        classNames.add(match[1]!);
     }
 
     let scopedCSS = cssString;
