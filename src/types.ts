@@ -28,8 +28,19 @@ export interface UltraRoute {
 }
 
 export interface UltraLinkProps {
+    /**
+     * The href of the link. It should be a relative path.
+     */
     href: string;
-    child: string | HTMLElement | DocumentFragment;
+    /**
+     * Array of child components. It accepts null values for conditional rendering.
+     */
+    children: (UltraRenderableElement | Node | UltraLightElement | null)[];
+    /**
+     * When true, the link will be transitioned to the new page using the viewtransition API.
+     * This is useful for transitioning between pages with animations.
+     */
+    viewTransition?: boolean;
 }
 
 export type UltraRenderableElement = string | HTMLElement | DocumentFragment;

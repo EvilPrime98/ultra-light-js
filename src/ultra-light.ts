@@ -360,44 +360,54 @@ export function UltraRouter(...routes: UltraRoute[]): UltraLightDiv {
 /**
  * This functional component is used to create a link element that works within
  * the UltraRouter context.
- * @param param0 
- * @returns 
  */
-export function UltraLink({ href, child }: UltraLinkProps): UltraLightElement {
-
+export function UltraLink({
+    href,
+    children,
+    viewTransition = false
+}: UltraLinkProps
+): UltraLightElement {
     if (!href) {
         console.warn('UltraLink: href is required');
     }
-
     const link = document.createElement('a') as UltraLightAnchor;
     link.href = href;
-
-    const clickHandler = (e: MouseEvent): void => {
-        if (e.ctrlKey || e.metaKey) {
-            return;
-        }
-
-        e.preventDefault();
-
+    function navigate() {
         try {
             window.history.pushState({}, '', href);
+            window.scrollTo({ top: 0, behavior: 'instant' });
             window.dispatchEvent(new PopStateEvent('popstate'));
         } catch (error) {
-            console.error('Error al navegar:', error);
+            console.error('UltraLink: Navigation error:', error);
+        }
+    }
+    function clickHandler(
+        e: MouseEvent
+    ): void {
+        if (e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        if (window.location.pathname === href) return;
+        if (!viewTransition) {
+            navigate();
+        } else {
+            if (!document.startViewTransition) {
+                navigate();
+                return;
+            }
+            document.startViewTransition(navigate);
         }
     };
-
     link.addEventListener('click', clickHandler);
-
-    const childElement = parseHTMLString(child);
-    if (childElement) {
-        link.appendChild(childElement);
-    }
-
+    children.forEach(child => {
+        if (!child) return;
+        const childElement = parseHTMLString(child);
+        if (childElement) {
+            link.appendChild(childElement);
+        }
+    });
     link._cleanup = () => {
         link.removeEventListener('click', clickHandler);
     };
-
     return link;
 }
 
