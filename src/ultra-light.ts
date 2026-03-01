@@ -3,7 +3,6 @@ import {
     type UltraContextReturn,
     type UltraRouteMatch,
     type UltraRoute,
-    type UltraLinkProps,
     type UltraTrigger,
     type UltraCleanupFunction,
     type UltraLightElement,
@@ -19,7 +18,6 @@ export type {
     UltraStateReturn,
     UltraContextReturn,
     UltraRoute,
-    UltraLinkProps,
     UltraTrigger,
     UltraCleanupFunction,
     UltraLightElement,
@@ -364,9 +362,27 @@ export function UltraRouter(...routes: UltraRoute[]): UltraLightDiv {
 export function UltraLink({
     href,
     children,
-    viewTransition = false
-}: UltraLinkProps
-): UltraLightElement {
+    viewTransition = false,
+    className = []
+}: {
+    /**
+     * The href of the link. It should be a relative path.
+     */
+    href: string;
+    /**
+     * Array of child components. It accepts null values for conditional rendering.
+     */
+    children: (UltraRenderableElement | Node | UltraLightElement | null)[];
+    /**
+     * When true, the link will be transitioned to the new page using the viewtransition API.
+     * This is useful for transitioning between pages with animations.
+     */
+    viewTransition?: boolean;
+    /**
+     * Array of class names.
+     */
+    className?: string[];
+}): UltraLightElement {
     if (!href) {
         console.warn('UltraLink: href is required');
     }
@@ -404,6 +420,10 @@ export function UltraLink({
         if (childElement) {
             link.appendChild(childElement);
         }
+    });
+    className.forEach(sel => {
+        if (!sel) return;
+        link.classList.add(sel);
     });
     link._cleanup = () => {
         link.removeEventListener('click', clickHandler);
