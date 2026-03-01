@@ -70,6 +70,12 @@ function stableHash(str: string): string {
     return Math.abs(hash).toString(36);
 }
 
+function deepFreeze<T>(obj: T): T {
+    if (typeof obj !== 'object' || obj === null) return obj;
+    Object.keys(obj).forEach(key => deepFreeze((obj as any)[key]));
+    return Object.freeze(obj);
+}
+
 /**
  * Returns a stateful getter, setter, and subscriber function for a given initial value.
  * @param initialValue 
@@ -84,15 +90,17 @@ export function ultraState<T>(initialValue: T): [
         console.warn('ultraState: initialValue is undefined');
     }
 
-    let value = (typeof initialValue === 'object')
-    ? Object.freeze(initialValue)
+    let value = (typeof initialValue === 'object' && initialValue !== null)
+    ? deepFreeze(initialValue)
     : initialValue;
 
     const subscribers = new Set<(value: T) => void>();
 
     const setValue = (newValue: T): void => {
         if (typeof value !== 'object' && value === newValue) return;
-        value = newValue;
+        value = (typeof newValue === 'object' && newValue !== null)
+        ? deepFreeze(newValue)
+        : newValue;
         subscribers.forEach(fn => {
             try {
                 fn(value);
