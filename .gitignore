@@ -4,3 +4,4 @@ test
 .env
 .npmrc
 .claude/
+coverage/

@@ -18,7 +18,8 @@
     "dev": "vite ./test",
     "build": "tsc",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "vitest watch"
   },
   "keywords": [
     "framework",
@@ -44,10 +45,15 @@
   "homepage": "https://github.com/EvilPrime98/ultra-light-js#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "4.0.18",
     "eslint": "^10.0.2",
     "globals": "^17.3.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "linkedom": "^0.18.12"
   }
 }
