@@ -11,7 +11,8 @@ import {
     type UltraLightDiv,
     hasCleanup,
     type UltraRenderableElement,
-    type UltraCompStateResult
+    type UltraCompStateResult,
+    type IUltraCompStateStateful
 } from './types';
 
 export type {
@@ -23,7 +24,8 @@ export type {
     UltraCleanupFunction,
     UltraLightElement,
     UltraLightAnchor,
-    UltraLightDiv
+    UltraLightDiv,
+    IUltraCompStateStateful
 }
 
 const SVG_EXCLUSIVE_TAGS = new Set([
