@@ -42,9 +42,16 @@ const SVG_EXCLUSIVE_TAGS = new Set([
 
 const TAG_REGEX = /^<([a-z][a-z0-9-]*)/i;
 
-function parseHTMLString(htmlString: string | HTMLElement | Node): HTMLElement | Node | null {
+export function parseHTMLString(
+    htmlString: string | HTMLElement | Node,
+    document?: Document
+): HTMLElement | Node | null {
+    if (!document) document = window.document;
     if (typeof htmlString !== 'string') return htmlString;    
-    const trimmed = htmlString.trim();
+    const trimmed = htmlString
+    .trim()
+    .replace(/\n/g, '')
+    .replace(/\s{2,}/g, ' ');
     if (!trimmed) return null;
     const tagMatch = trimmed.match(TAG_REGEX);
     if (!tagMatch) return null;
@@ -508,7 +515,7 @@ export function UltraComponent({
     const node = parseHTMLString(component) as UltraLightElement;
 
     if (!node) {
-        console.error('UltraComponent: No se pudo crear el nodo');
+        console.error('UltraComponent: Could not create node');
         return document.createElement('div') as UltraLightElement;
     }
 
