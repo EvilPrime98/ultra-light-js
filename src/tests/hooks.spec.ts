@@ -2,7 +2,8 @@ import { describe, expect, it, suite } from 'vitest';
 import { parseHTML } from 'linkedom';
 import {
     ultraState,
-    UltraContext
+    UltraContext,
+    ultraCompState
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -310,6 +311,88 @@ describe('hooks', () => {
             }, $child);
             set({ a: 1, b: 1 }, $child);
             expect(detected).toBe(true);
+        });
+
+    }, time_out);
+
+    suite('ultraCompState: non-primitive state', () => {
+
+        it('should throw an error if the initial value is not an object', () => {
+            expect(() => {
+                //@ts-expect-error: testing invalid initial value
+                ultraCompState('test');
+            }).toThrowError();
+        });
+        
+        const foo = ultraCompState ({ 
+            a: 0, 
+            b: 0, 
+            c: 0,
+            sum: ({ a, b, c }: typeof foo) => {
+                return a.get() + b.get() + c.get();
+            }
+        });
+
+        it('should return a stateful get, set and subscribe function for each key', () => {
+            expect(foo.a.get).toBeInstanceOf(Function);
+            expect(foo.a.set).toBeInstanceOf(Function);
+            expect(foo.a.subscribe).toBeInstanceOf(Function);
+            expect(foo.b.get).toBeInstanceOf(Function);
+            expect(foo.b.set).toBeInstanceOf(Function);
+            expect(foo.b.subscribe).toBeInstanceOf(Function);
+            expect(foo.c.get).toBeInstanceOf(Function);
+            expect(foo.c.set).toBeInstanceOf(Function);
+            expect(foo.c.subscribe).toBeInstanceOf(Function);
+            expect(foo.sum).toBeInstanceOf(Function);
+        });
+
+        it('get() should return the initial value for each key', () => {
+            expect(foo.a.get()).toBe(0);
+            expect(foo.b.get()).toBe(0);
+            expect(foo.c.get()).toBe(0);
+        });
+
+        it ('sum() should return the sum of a, b, and c', () => {
+            expect(foo.sum()).toBe(0);
+            foo.a.set(1);
+            foo.b.set(2);
+            foo.c.set(3);
+            expect(foo.sum()).toBe(6);
+        });
+
+        it('set() should set a new value for each key', () => {
+            foo.a.set(1);
+            foo.b.set(2);
+            foo.c.set(3);
+            expect(foo.a.get()).toBe(1);
+            expect(foo.b.get()).toBe(2);
+            expect(foo.c.get()).toBe(3);
+            foo.a.set(0);
+            foo.b.set(0);
+            foo.c.set(0);
+        });
+
+        it('subscribe() should notify when the value changes', () => {
+            ['a', 'b', 'c'].forEach((key) => {
+                let detected = false;
+                foo[key].subscribe(() => {
+                    detected = true;
+                });
+                foo[key].set(1);
+                expect(detected).toBe(true);
+                foo[key].set(0);
+                expect(detected).toBe(true);
+            });
+        });
+        
+        it('subscribe() should NOT notify when another key changes', () => {
+            let detected = false;
+            foo.a.subscribe(() => {
+                detected = true;
+            });
+            foo.b.set(1);
+            expect(detected).toBe(false);
+            foo.a.set(0);
         });
 
     }, time_out);

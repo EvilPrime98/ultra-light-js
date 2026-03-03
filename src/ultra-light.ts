@@ -885,6 +885,9 @@ export function ultraStyles(cssString: string): Record<string, string> {
 export function ultraCompState<T extends Record<string, unknown>>(
     initialComp: T
 ): UltraCompStateResult<T> {
+    if (typeof initialComp !== 'object' || initialComp === null) {
+        throw new Error('ultraCompState: initial value cannot be a primitive or null.');
+    }
     const comp = {} as UltraCompStateResult<T>;
     (Object.keys(initialComp) as (keyof T)[]).forEach(key => {
         if (typeof initialComp[key] === 'function') {
