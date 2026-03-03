@@ -3,7 +3,8 @@ import { parseHTML } from 'linkedom';
 import {
     ultraState,
     UltraContext,
-    ultraCompState
+    ultraCompState,
+    ultraStyles
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -291,7 +292,7 @@ describe('hooks', () => {
         });
 
         it('set() should set a new value if context is reachable', () => {
-            
+
             set({ a: 1, b: 1 }, $child);
             expect(get($child).a).toBe(1);
             expect(get($child).b).toBe(1);
@@ -323,10 +324,10 @@ describe('hooks', () => {
                 ultraCompState('test');
             }).toThrowError();
         });
-        
-        const foo = ultraCompState ({ 
-            a: 0, 
-            b: 0, 
+
+        const foo = ultraCompState({
+            a: 0,
+            b: 0,
             c: 0,
             sum: ({ a, b, c }: typeof foo) => {
                 return a.get() + b.get() + c.get();
@@ -352,7 +353,7 @@ describe('hooks', () => {
             expect(foo.c.get()).toBe(0);
         });
 
-        it ('sum() should return the sum of a, b, and c', () => {
+        it('sum() should return the sum of a, b, and c', () => {
             expect(foo.sum()).toBe(0);
             foo.a.set(1);
             foo.b.set(2);
@@ -384,7 +385,7 @@ describe('hooks', () => {
                 expect(detected).toBe(true);
             });
         });
-        
+
         it('subscribe() should NOT notify when another key changes', () => {
             let detected = false;
             foo.a.subscribe(() => {
@@ -393,6 +394,81 @@ describe('hooks', () => {
             foo.b.set(1);
             expect(detected).toBe(false);
             foo.a.set(0);
+        });
+
+    }, time_out);
+
+    suite('ultraStyles', () => {
+
+        it('should return an empty object for invalid input', () => {
+            // @ts-expect-error: testing invalid input
+            expect(ultraStyles(null, document)).toEqual({});
+            // @ts-expect-error: testing invalid input
+            expect(ultraStyles(123, document)).toEqual({});
+            expect(ultraStyles('', document)).toEqual({});
+        });
+
+        it('should return a map of class names to hashed class names', () => {
+            const styles = ultraStyles('.foo { color: red; }', document);
+            expect(styles).toHaveProperty('foo');
+            expect(styles['foo']).toMatch(/^foo_[a-z0-9]+$/);
+        });
+
+        it('should extract all class names from the CSS string', () => {
+            const styles = ultraStyles('.container { display: flex; } .title { font-size: 1rem; } .subtitle { color: gray; }', document);
+            expect(styles).toHaveProperty('container');
+            expect(styles).toHaveProperty('title');
+            expect(styles).toHaveProperty('subtitle');
+        });
+
+        it('all hashed class names should share the same hash suffix', () => {
+            const styles = ultraStyles('.card { padding: 1rem; } .card-body { margin: 0; }', document);
+            const hashes = Object.values(styles).map(v => v.split('_').pop());
+            const uniqueHashes = new Set(hashes);
+            expect(uniqueHashes.size).toBe(1);
+        });
+
+        it('should return the same map for the same CSS string (cache hit)', () => {
+            const css = '.cached { background: blue; }';
+            const first = ultraStyles(css, document);
+            const second = ultraStyles(css, document);
+            expect(first).toBe(second);
+        });
+
+        it('should return different hashed names for different CSS strings', () => {
+            const stylesA = ultraStyles('.box { color: red; }', document);
+            const stylesB = ultraStyles('.box { color: blue; }', document);
+            expect(stylesA['box']).not.toBe(stylesB['box']);
+        });
+
+        it('should inject a <style> element with id "ultra-styles" into the document', () => {
+            ultraStyles('.injected { color: green; }', document);
+            const styleEl = document.getElementById('ultra-styles');
+            expect(styleEl).not.toBeNull();
+            expect(styleEl?.tagName.toLowerCase()).toBe('style');
+        });
+
+        it('should write the scoped CSS into the style element', () => {
+            const styles = ultraStyles('.scoped { color: purple; }', document);
+            const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;
+            expect(styleEl.textContent).toContain(styles['scoped']);
+        });
+
+        it('should not duplicate styles for the same CSS string', () => {
+            const css = '.nodupe { color: pink; }';
+            ultraStyles(css, document);
+            ultraStyles(css, document);
+            const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;
+            const count = (styleEl.textContent?.match(/\.nodupe_/g) ?? []).length;
+            expect(count).toBe(1);
+        });
+
+        it('should not include the original unscoped class name in the injected CSS', () => {
+            const styles = ultraStyles('.original { color: orange; }', document);
+            const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;
+            const hashedClass = styles['original'];
+            expect(styleEl.textContent).toContain(`.${hashedClass}`);
+            expect(styleEl.textContent).not.toMatch(/\.original\b(?!_)/);
         });
 
     }, time_out);

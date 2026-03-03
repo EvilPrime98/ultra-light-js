@@ -836,10 +836,15 @@ const styleCache = new Map<string, Record<string, string>>();
  * @param cssString A valid CSS context.
  * @returns 
  */
-export function ultraStyles(cssString: string): Record<string, string> {
+export function ultraStyles(
+    cssString: string,
+    document?: Document
+): Record<string, string> {
 
+    if (!document) document = window.document;
+    
     if (!cssString || typeof cssString !== 'string') {
-        console.warn('ultraStyles: cssString inválido');
+        console.warn('ultraStyles: invalid cssString');
         return {};
     }
 
