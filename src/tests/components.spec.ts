@@ -1,17 +1,19 @@
-import { describe, expect, it, suite } from 'vitest';
+import { describe, expect, it, suite, beforeAll } from 'vitest';
 import { Window } from 'happy-dom';
 import {
-    parseHTMLString
+    parseHTMLString,
+    UltraComponent,
+    ultraState,
+    type UltraLightElement
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
 
-describe('hooks', () => {
+describe('Components', () => {
 
     const happyWindow = new Window({ url: 'about:blank' });
     const document = happyWindow.document;
     const window = happyWindow;
-
     document.write('<!doctype html><html><body></body></html>');
 
     suite('parseHTMLString', () => {
@@ -115,6 +117,134 @@ describe('hooks', () => {
                 document as unknown as Document
             );
             expect($result).toBeInstanceOf(window.HTMLDivElement);
+        });
+
+    }, time_out);
+
+    suite('UltraComponent', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { window: happyWindow, document: happyWindow.document });
+        });
+
+        it('should return an HTMLElement from a valid HTML string', () => {
+            const $el = UltraComponent({ component: '<div></div>' });
+            expect($el).toBeInstanceOf(window.HTMLDivElement);
+        });
+
+        it('should return a fallback (div) when given an invalid component', () => {
+            const $el = UltraComponent({ component: 'not-html' });
+            expect($el).toBeInstanceOf(window.HTMLDivElement);
+        });
+
+        it('should expose a _cleanup function on the returned element', () => {
+            const $el = UltraComponent({ component: '<div></div>' });
+            expect($el._cleanup).toBeInstanceOf(Function);
+        });
+
+        it('should attach event handlers to the element', () => {
+            let clicked = false;
+            const $el = UltraComponent({
+                component: '<button></button>',
+                eventHandler: { click: () => { clicked = true; } }
+            });
+            $el.click();
+            expect(clicked).toBe(true);
+        });
+
+        it('should remove event handlers when _cleanup is called', () => {
+            let clickCount = 0;
+            const $el = UltraComponent({
+                component: '<button></button>',
+                eventHandler: { click: () => { clickCount++; } }
+            });
+            $el.click();
+            expect(clickCount).toBe(1);
+            $el._cleanup?.();
+            $el.click();
+            expect(clickCount).toBe(1);
+        });
+
+        it('should apply CSS styles to the element', () => {
+            const $el = UltraComponent({
+                component: '<div></div>',
+                styles: { color: 'red' }
+            });
+            expect(($el as HTMLElement).style.color).toBe('red');
+        });
+
+        it('should apply class names to the element', () => {
+            const $el = UltraComponent({
+                component: '<div></div>',
+                className: ['foo', 'bar']
+            });
+            expect($el.classList.contains('foo')).toBe(true);
+            expect($el.classList.contains('bar')).toBe(true);
+        });
+
+        it('should append children to the element', () => {
+            const $el = UltraComponent({
+                component: '<div></div>',
+                children: ['<p>Hello</p>', '<span>World</span>']
+            });
+            expect($el.children.length).toBe(2);
+            expect($el.children[0]).toBeInstanceOf(window.HTMLParagraphElement);
+            expect($el.children[1]).toBeInstanceOf(window.HTMLSpanElement);
+        });
+
+        it('should skip null children', () => {
+            const $el = UltraComponent({
+                component: '<div></div>',
+                children: ['<p>Hello</p>', null, '<span>World</span>']
+            });
+            expect($el.children.length).toBe(2);
+        });
+
+        it('should call children _cleanup functions when parent _cleanup is called', () => {
+            let childCleanupCalled = false;
+            const $child = document.createElement('div') as unknown as UltraLightElement;
+            $child._cleanup = () => { childCleanupCalled = true; };
+            const $el = UltraComponent({
+                component: '<div></div>',
+                children: [$child as unknown as HTMLElement]
+            });
+            $el._cleanup?.();
+            expect(childCleanupCalled).toBe(true);
+        });
+
+        it('should call triggerFunction when the subscriber notifies', () => {
+            const [, set, subscriber] = ultraState(0);
+            let triggered = false;
+            UltraComponent({
+                component: '<div></div>',
+                trigger: [{ subscriber, triggerFunction: () => { triggered = true; } }]
+            });
+            set(1);
+            expect(triggered).toBe(true);
+        });
+
+        it('should unsubscribe triggers when _cleanup is called', () => {
+            const [, set, subscriber] = ultraState(0);
+            let triggerCount = 0;
+            const $el = UltraComponent({
+                component: '<div></div>',
+                trigger: [{ subscriber, triggerFunction: () => { triggerCount++; } }]
+            });
+            set(1);
+            expect(triggerCount).toBe(1);
+            $el._cleanup?.();
+            set(2);
+            expect(triggerCount).toBe(1);
+        });
+
+        it('should call custom cleanup functions when _cleanup is called', () => {
+            let cleanupCalled = false;
+            const $el = UltraComponent({
+                component: '<div></div>',
+                cleanup: [() => { cleanupCalled = true; }]
+            });
+            $el._cleanup?.();
+            expect(cleanupCalled).toBe(true);
         });
 
     }, time_out);
