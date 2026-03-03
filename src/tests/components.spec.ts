@@ -3,6 +3,7 @@ import { Window } from 'happy-dom';
 import {
     parseHTMLString,
     UltraComponent,
+    UltraActivity,
     ultraState,
     type UltraLightElement
 } from '../ultra-light';
@@ -241,6 +242,169 @@ describe('Components', () => {
             let cleanupCalled = false;
             const $el = UltraComponent({
                 component: '<div></div>',
+                cleanup: [() => { cleanupCalled = true; }]
+            });
+            $el._cleanup?.();
+            expect(cleanupCalled).toBe(true);
+        });
+
+    }, time_out);
+
+    suite('UltraActivity', () => {
+
+        it('should set display:none when mode state is false', () => {
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => false, subscriber: () => () => {} }
+            });
+            expect(($el as HTMLElement).style.display).toBe('none');
+        });
+
+        it('should set display:"" when mode state is true', () => {
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => {} }
+            });
+            expect(($el as HTMLElement).style.display).toBe('');
+        });
+
+        it('should update display when the subscriber notifies', () => {
+            const ref: { update: (() => void) | null } = { update: null };
+            let visible = false;
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: {
+                    state: () => visible,
+                    subscriber: (fn) => { ref.update = fn; return () => {}; }
+                }
+            });
+            expect(($el as HTMLElement).style.display).toBe('none');
+            visible = true;
+            ref.update?.();
+            expect(($el as HTMLElement).style.display).toBe('');
+        });
+
+        it('should stop updating display after _cleanup is called', () => {
+            const ref: { update: (() => void) | null } = { update: null };
+            let visible = false;
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: {
+                    state: () => visible,
+                    subscriber: (fn) => { ref.update = fn; return () => { ref.update = null; }; }
+                }
+            });
+            $el._cleanup?.();
+            visible = true;
+            ref.update?.();
+            expect(($el as HTMLElement).style.display).toBe('none');
+        });
+
+        it('should set visibility:hidden when mode state is false and type is "visibility"', () => {
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => false, subscriber: () => () => {} },
+                type: 'visibility'
+            });
+            expect(($el as HTMLElement).style.visibility).toBe('hidden');
+        });
+
+        it('should set visibility:visible when mode state is true and type is "visibility"', () => {
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => {} },
+                type: 'visibility'
+            });
+            expect(($el as HTMLElement).style.visibility).toBe('visible');
+        });
+
+        it('should update visibility when the subscriber notifies and type is "visibility"', () => {
+            const ref: { update: (() => void) | null } = { update: null };
+            let visible = false;
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: {
+                    state: () => visible,
+                    subscriber: (fn) => { ref.update = fn; return () => {}; }
+                },
+                type: 'visibility'
+            });
+            expect(($el as HTMLElement).style.visibility).toBe('hidden');
+            visible = true;
+            ref.update?.();
+            expect(($el as HTMLElement).style.visibility).toBe('visible');
+        });
+
+        it('should support an array of subscribers in mode', () => {
+            const updates: (() => void)[] = [];
+            let visible = false;
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: {
+                    state: () => visible,
+                    subscriber: [
+                        (fn) => { updates.push(fn); return () => {}; },
+                        (fn) => { updates.push(fn); return () => {}; }
+                    ]
+                }
+            });
+            expect(updates).toHaveLength(2);
+            visible = true;
+            updates[0]?.();
+            expect(($el as HTMLElement).style.display).toBe('');
+        });
+
+        it('should expose a _cleanup function on the returned element', () => {
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => {} }
+            });
+            expect($el._cleanup).toBeInstanceOf(Function);
+        });
+
+        it('should attach event handlers to the element', () => {
+            let clicked = false;
+            const $el = UltraActivity({
+                component: '<button></button>',
+                mode: { state: () => true, subscriber: () => () => {} },
+                eventHandler: { click: () => { clicked = true; } }
+            });
+            $el.click();
+            expect(clicked).toBe(true);
+        });
+
+        it('should call triggerFunction when the subscriber notifies', () => {
+            const [, set, subscriber] = ultraState(0);
+            let triggered = false;
+            UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => {} },
+                trigger: [{ subscriber, triggerFunction: () => { triggered = true; } }]
+            });
+            set(1);
+            expect(triggered).toBe(true);
+        });
+
+        it('should unsubscribe triggers when _cleanup is called', () => {
+            const [, set, subscriber] = ultraState(0);
+            let triggerCount = 0;
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => {} },
+                trigger: [{ subscriber, triggerFunction: () => { triggerCount++; } }]
+            });
+            set(1);
+            expect(triggerCount).toBe(1);
+            $el._cleanup?.();
+            set(2);
+            expect(triggerCount).toBe(1);
+        });
+
+        it('should call custom cleanup functions when _cleanup is called', () => {
+            let cleanupCalled = false;
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => {} },
                 cleanup: [() => { cleanupCalled = true; }]
             });
             $el._cleanup?.();
