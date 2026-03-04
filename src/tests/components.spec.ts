@@ -5,14 +5,15 @@ import {
     UltraComponent,
     UltraActivity,
     ultraState,
-    type UltraLightElement
+    type UltraLightElement,
+    UltraRouter
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
 
 describe('Components', () => {
 
-    const happyWindow = new Window({ url: 'about:blank' });
+    const happyWindow = new Window({ url: 'about:/' });
     const document = happyWindow.document;
     const window = happyWindow;
     document.write('<!doctype html><html><body></body></html>');
@@ -21,7 +22,7 @@ describe('Components', () => {
 
         it('should return (null) from an empty HTML string', () => {
             const result = parseHTMLString(
-                '', 
+                '',
                 document as unknown as Document
             );
             expect(result).toBeNull();
@@ -29,7 +30,7 @@ describe('Components', () => {
 
         it('should return (null) from an invalid HTML string', () => {
             const result = parseHTMLString(
-                'foo', 
+                'foo',
                 document as unknown as Document
             );
             expect(result).toBeNull();
@@ -37,7 +38,7 @@ describe('Components', () => {
 
         it('should return (HTMLUnknownElement) from a valid HTML string with invalid tags', () => {
             const $unknown = parseHTMLString(
-                '<foo></foo>', 
+                '<foo></foo>',
                 document as unknown as Document
             );
             expect($unknown).toBeInstanceOf(window.HTMLUnknownElement);
@@ -255,7 +256,7 @@ describe('Components', () => {
         it('should set display:none when mode state is false', () => {
             const $el = UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => false, subscriber: () => () => {} }
+                mode: { state: () => false, subscriber: () => () => { } }
             });
             expect(($el as HTMLElement).style.display).toBe('none');
         });
@@ -263,7 +264,7 @@ describe('Components', () => {
         it('should set display:"" when mode state is true', () => {
             const $el = UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => true, subscriber: () => () => {} }
+                mode: { state: () => true, subscriber: () => () => { } }
             });
             expect(($el as HTMLElement).style.display).toBe('');
         });
@@ -275,7 +276,7 @@ describe('Components', () => {
                 component: '<div></div>',
                 mode: {
                     state: () => visible,
-                    subscriber: (fn) => { ref.update = fn; return () => {}; }
+                    subscriber: (fn) => { ref.update = fn; return () => { }; }
                 }
             });
             expect(($el as HTMLElement).style.display).toBe('none');
@@ -303,7 +304,7 @@ describe('Components', () => {
         it('should set visibility:hidden when mode state is false and type is "visibility"', () => {
             const $el = UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => false, subscriber: () => () => {} },
+                mode: { state: () => false, subscriber: () => () => { } },
                 type: 'visibility'
             });
             expect(($el as HTMLElement).style.visibility).toBe('hidden');
@@ -312,7 +313,7 @@ describe('Components', () => {
         it('should set visibility:visible when mode state is true and type is "visibility"', () => {
             const $el = UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => true, subscriber: () => () => {} },
+                mode: { state: () => true, subscriber: () => () => { } },
                 type: 'visibility'
             });
             expect(($el as HTMLElement).style.visibility).toBe('visible');
@@ -325,7 +326,7 @@ describe('Components', () => {
                 component: '<div></div>',
                 mode: {
                     state: () => visible,
-                    subscriber: (fn) => { ref.update = fn; return () => {}; }
+                    subscriber: (fn) => { ref.update = fn; return () => { }; }
                 },
                 type: 'visibility'
             });
@@ -343,8 +344,8 @@ describe('Components', () => {
                 mode: {
                     state: () => visible,
                     subscriber: [
-                        (fn) => { updates.push(fn); return () => {}; },
-                        (fn) => { updates.push(fn); return () => {}; }
+                        (fn) => { updates.push(fn); return () => { }; },
+                        (fn) => { updates.push(fn); return () => { }; }
                     ]
                 }
             });
@@ -357,7 +358,7 @@ describe('Components', () => {
         it('should expose a _cleanup function on the returned element', () => {
             const $el = UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => true, subscriber: () => () => {} }
+                mode: { state: () => true, subscriber: () => () => { } }
             });
             expect($el._cleanup).toBeInstanceOf(Function);
         });
@@ -366,7 +367,7 @@ describe('Components', () => {
             let clicked = false;
             const $el = UltraActivity({
                 component: '<button></button>',
-                mode: { state: () => true, subscriber: () => () => {} },
+                mode: { state: () => true, subscriber: () => () => { } },
                 eventHandler: { click: () => { clicked = true; } }
             });
             $el.click();
@@ -378,7 +379,7 @@ describe('Components', () => {
             let triggered = false;
             UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => true, subscriber: () => () => {} },
+                mode: { state: () => true, subscriber: () => () => { } },
                 trigger: [{ subscriber, triggerFunction: () => { triggered = true; } }]
             });
             set(1);
@@ -390,7 +391,7 @@ describe('Components', () => {
             let triggerCount = 0;
             const $el = UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => true, subscriber: () => () => {} },
+                mode: { state: () => true, subscriber: () => () => { } },
                 trigger: [{ subscriber, triggerFunction: () => { triggerCount++; } }]
             });
             set(1);
@@ -404,11 +405,153 @@ describe('Components', () => {
             let cleanupCalled = false;
             const $el = UltraActivity({
                 component: '<div></div>',
-                mode: { state: () => true, subscriber: () => () => {} },
+                mode: { state: () => true, subscriber: () => () => { } },
                 cleanup: [() => { cleanupCalled = true; }]
             });
             $el._cleanup?.();
             expect(cleanupCalled).toBe(true);
+        });
+
+    }, time_out);
+
+    suite('UltraRouter', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { 
+                window: happyWindow, 
+                document: happyWindow.document 
+            });
+        });
+
+        it('should return an HTMLDivElement with class "browser-router"', () => {
+            const router = UltraRouter({ 
+                path: '/', component: () => '<div>Home</div>' 
+            });
+            expect(router).toBeInstanceOf(window.HTMLDivElement);
+            expect(router.classList.contains('browser-router')).toBe(true);
+        });
+
+        it('should render the matching route on mount', () => {
+            const router = UltraRouter({ 
+                path: '/', component: () => '<p>Home</p>' 
+            });
+            //@ts-expect-error
+            happyWindow.document.body.appendChild(router);
+            expect(router.innerHTML).toBe('<p>Home</p>');
+        });
+
+        it('should render the wildcard route when no route matches', () => {
+            happyWindow.history.pushState({}, '', '/no-match');
+            const router = UltraRouter(
+                { path: '/', component: () => '<p>Home</p>' },
+                { path: '/*', component: () => '<p>Not Found</p>' }
+            );
+            expect(router.querySelector('p')?.textContent).toBe('Not Found');
+        });
+
+        it('should render nothing when no route matches and there is no wildcard', () => {
+            happyWindow.history.pushState({}, '', '/no-match');
+            const router = UltraRouter({ path: '/', component: () => '<p>Home</p>' });
+            expect(router.children.length).toBe(0);
+        });
+
+        it('should pass route params to the component function', () => {
+            happyWindow.history.pushState({}, '', '/users/42');
+            const router = UltraRouter({
+                path: '/users/:id',
+                component: ({ id } = {}) => `<p>${id}</p>`
+            });
+            expect(router.querySelector('p')?.textContent).toBe('42');
+        });
+
+        it('should pass multiple route params to the component function', () => {
+            happyWindow.history.pushState({}, '', '/users/7/posts/99');
+            const router = UltraRouter({
+                path: '/users/:userId/posts/:postId',
+                component: ({ userId, postId } = {}) => `<span>${userId}-${postId}</span>`
+            });
+            expect(router.querySelector('span')?.textContent).toBe('7-99');
+        });
+
+        it('should re-render on popstate', () => {
+            happyWindow.history.pushState({}, '', '/');
+            const router = UltraRouter(
+                { path: '/', component: () => '<p>Home</p>' },
+                { path: '/about', component: () => '<p>About</p>' }
+            );
+            expect(router.querySelector('p')?.textContent).toBe('Home');
+
+            happyWindow.history.pushState({}, '', '/about');
+            window.dispatchEvent(new window.PopStateEvent('popstate'));
+
+            expect(router.querySelector('p')?.textContent).toBe('About');
+        });
+
+        it('should replace container contents on each navigation', () => {
+            happyWindow.history.pushState({}, '', '/a');
+            const router = UltraRouter(
+                { path: '/a', component: () => '<p>A</p>' },
+                { path: '/b', component: () => '<p>B</p>' }
+            );
+            expect(router.children.length).toBe(1);
+
+            happyWindow.history.pushState({}, '', '/b');
+            window.dispatchEvent(new window.PopStateEvent('popstate'));
+
+            expect(router.children.length).toBe(1);
+            expect(router.querySelector('p')?.textContent).toBe('B');
+        });
+
+        it('should expose a _cleanup function on the returned element', () => {
+            const router = UltraRouter({ path: '/', component: () => '<div></div>' });
+            expect(router._cleanup).toBeInstanceOf(Function);
+        });
+
+        it('should stop responding to popstate after _cleanup is called', () => {
+            happyWindow.history.pushState({}, '', '/');
+            const router = UltraRouter(
+                { path: '/', component: () => '<p>Home</p>' },
+                { path: '/away', component: () => '<p>Away</p>' }
+            );
+
+            router._cleanup?.();
+
+            happyWindow.history.pushState({}, '', '/away');
+            window.dispatchEvent(new window.PopStateEvent('popstate'));
+
+            expect(router.querySelector('p')?.textContent).toBe('Home');
+        });
+
+        it('should call the active route _cleanup when the router is cleaned up', () => {
+            happyWindow.history.pushState({}, '', '/');
+            let routeCleanupCalled = false;
+            const $el = document.createElement('div') as unknown as UltraLightElement;
+            $el._cleanup = () => { routeCleanupCalled = true; };
+
+            const router = UltraRouter({
+                path: '/',
+                component: () => $el as unknown as HTMLElement
+            });
+
+            router._cleanup?.();
+            expect(routeCleanupCalled).toBe(true);
+        });
+
+        it('should call the previous route _cleanup when navigating away', () => {
+            happyWindow.history.pushState({}, '', '/');
+            let prevCleanupCalled = false;
+            const $prev = document.createElement('p') as unknown as UltraLightElement;
+            $prev._cleanup = () => { prevCleanupCalled = true; };
+
+            const router = UltraRouter(
+                { path: '/', component: () => $prev as unknown as HTMLElement },
+                { path: '/next', component: () => '<p>Next</p>' }
+            );
+
+            happyWindow.history.pushState({}, '', '/next');
+            window.dispatchEvent(new window.PopStateEvent('popstate'));
+
+            expect(prevCleanupCalled).toBe(true);
         });
 
     }, time_out);

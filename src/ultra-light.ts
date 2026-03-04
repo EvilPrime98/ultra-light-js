@@ -290,11 +290,15 @@ function matchRoute(routePath: string, currentPath: string): UltraRouteMatch {
  * @param routes 
  * @returns 
  */
-export function UltraRouter(...routes: UltraRoute[]): UltraLightDiv {
+export function UltraRouter(
+    ...routes: UltraRoute[]
+): UltraLightDiv {
+    
     const paths = routes.map(r => r.path);
     const duplicates = paths.filter((p, i) => paths.indexOf(p) !== i && p !== '/*');
+    
     if (duplicates.length > 0) {
-        console.warn('UltraRouter: Rutas duplicadas detectadas:', duplicates);
+        console.warn('UltraRouter: Duplicate routes detected:', duplicates.join(', '));
     }
 
     const container = document.createElement('div') as UltraLightDiv;
@@ -303,11 +307,12 @@ export function UltraRouter(...routes: UltraRoute[]): UltraLightDiv {
     let currentCleanup: UltraCleanupFunction | null = null;
 
     const renderRoute = (): void => {
+
         if (currentCleanup) {
             try {
                 currentCleanup();
             } catch (error) {
-                console.error('Error al limpiar ruta anterior:', error);
+                console.error('Error while cleaning up previous route:', error);
             }
         }
 

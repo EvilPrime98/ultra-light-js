@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-export default tseslint.config(
+export default tseslint.defineConfig(
   { ignores: ["dist", "node_modules"] },
   {
     // TypeScript files — full type-aware linting
