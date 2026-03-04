@@ -1,4 +1,4 @@
-import { describe, expect, it, suite, beforeAll } from 'vitest';
+import { describe, expect, it, suite, beforeAll, vi } from 'vitest';
 import { Window } from 'happy-dom';
 import {
     parseHTMLString,
@@ -6,14 +6,16 @@ import {
     UltraActivity,
     ultraState,
     type UltraLightElement,
-    UltraRouter
+    UltraRouter,
+    UltraLink
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
+const HOST_PATH = 'about:';
 
 describe('Components', () => {
 
-    const happyWindow = new Window({ url: 'about:/' });
+    const happyWindow = new Window({ url: `${HOST_PATH}/` });
     const document = happyWindow.document;
     const window = happyWindow;
     document.write('<!doctype html><html><body></body></html>');
@@ -417,23 +419,23 @@ describe('Components', () => {
     suite('UltraRouter', () => {
 
         beforeAll(() => {
-            Object.assign(globalThis, { 
-                window: happyWindow, 
-                document: happyWindow.document 
+            Object.assign(globalThis, {
+                window: happyWindow,
+                document: happyWindow.document
             });
         });
 
         it('should return an HTMLDivElement with class "browser-router"', () => {
-            const router = UltraRouter({ 
-                path: '/', component: () => '<div>Home</div>' 
+            const router = UltraRouter({
+                path: '/', component: () => '<div>Home</div>'
             });
             expect(router).toBeInstanceOf(window.HTMLDivElement);
             expect(router.classList.contains('browser-router')).toBe(true);
         });
 
         it('should render the matching route on mount', () => {
-            const router = UltraRouter({ 
-                path: '/', component: () => '<p>Home</p>' 
+            const router = UltraRouter({
+                path: '/', component: () => '<p>Home</p>'
             });
             //@ts-expect-error
             happyWindow.document.body.appendChild(router);
@@ -552,6 +554,161 @@ describe('Components', () => {
             window.dispatchEvent(new window.PopStateEvent('popstate'));
 
             expect(prevCleanupCalled).toBe(true);
+        });
+
+    }, time_out);
+
+    suite('UltraLink', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { 
+                window: happyWindow, 
+                document: happyWindow.document,
+                PopStateEvent: happyWindow.PopStateEvent
+            });
+            happyWindow.history.pushState({}, '', '/');
+        });
+
+        it('should return an HTMLAnchorElement', () => {
+            const link = UltraLink({ href: '/home', children: [] });
+            expect(link).toBeInstanceOf(window.HTMLAnchorElement);
+        });
+
+        it('should set the href attribute', () => {
+            const link = UltraLink({ href: '/foo', children: [] }) as HTMLAnchorElement;
+            expect(link.href).toBe(`${HOST_PATH}/foo`);
+        });
+
+        it('should append valid children', () => {
+            const link = UltraLink({
+                href: '/home',
+                children: ['<span>Click me</span>', '<em>!</em>']
+            });
+            expect(link.children.length).toBe(2);
+            expect(link.children[0]).toBeInstanceOf(window.HTMLSpanElement);
+            expect(link.children[1]).toBeInstanceOf(window.HTMLElement);
+        });
+
+        it('should skip null children', () => {
+            const link = UltraLink({
+                href: '/home',
+                children: ['<span>Click</span>', null]
+            });
+            expect(link.children.length).toBe(1);
+        });
+
+        it('should apply class names to the anchor element', () => {
+            const link = UltraLink({
+                href: '/home',
+                children: [],
+                className: ['nav-link', 'active']
+            });
+            expect(link.classList.contains('nav-link')).toBe(true);
+            expect(link.classList.contains('active')).toBe(true);
+        });
+
+        it('should expose a _cleanup function', () => {
+            const link = UltraLink({ href: '/home', children: [] });
+            expect(link._cleanup).toBeInstanceOf(Function);
+        });
+
+        it('should warn when href is not provided', () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+            UltraLink({ href: '', children: [] });
+            expect(warnSpy).toHaveBeenCalledWith(
+                expect.stringContaining('UltraLink')
+            );
+            warnSpy.mockRestore();
+        });
+
+        it('should navigate to the href on click', () => {
+            const link = UltraLink({ href: '/foo', children: [] });
+            link.click();
+            expect(window.location.pathname).toBe('/foo');
+        });
+
+        it('should not navigate when already on the target path', () => {
+            happyWindow.history.pushState({}, '', '/same');
+            const link = UltraLink({ href: '/same', children: [] });
+            const popstateSpy = vi.fn();
+            happyWindow.addEventListener('popstate', popstateSpy);
+            link.click();
+            expect(popstateSpy).not.toHaveBeenCalled();
+            happyWindow.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should not navigate when Ctrl key is held', () => {
+            happyWindow.history.pushState({}, '', '/start');
+            const link = UltraLink({ href: '/ctrl-blocked', children: [] });
+            const popstateSpy = vi.fn();
+            window.addEventListener('popstate', popstateSpy);
+            // @ts-expect-error
+            link.dispatchEvent(new window.MouseEvent('click', { bubbles: true, ctrlKey: true }));
+            expect(popstateSpy).not.toHaveBeenCalled();
+            window.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should not navigate when Meta key is held', () => {
+            happyWindow.history.pushState({}, '', '/start');
+            const link = UltraLink({ href: '/meta-blocked', children: [] });
+            const popstateSpy = vi.fn();
+            window.addEventListener('popstate', popstateSpy);
+            // @ts-expect-error
+            link.dispatchEvent(new window.MouseEvent('click', { bubbles: true, metaKey: true }));
+            expect(popstateSpy).not.toHaveBeenCalled();
+            window.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should call window.scrollTo on navigation', () => {
+            happyWindow.history.pushState({}, '', '/scroll-start');
+            const scrollSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => { });
+            const link = UltraLink({ href: '/scroll-dest', children: [] });
+            link.click();
+            expect(scrollSpy).toHaveBeenCalledWith({ top: 0, behavior: 'instant' });
+            scrollSpy.mockRestore();
+        });
+
+        it('should call document.startViewTransition when viewTransition is true and API is available', () => {
+            happyWindow.history.pushState({}, '', '/vt-start');
+            const transitionSpy = vi.fn((cb: () => void) => cb());
+            Object.defineProperty(document, 'startViewTransition', {
+                value: transitionSpy,
+                configurable: true
+            });
+            const link = UltraLink({ href: '/vt-dest', children: [], viewTransition: true });
+            link.click();
+            expect(transitionSpy).toHaveBeenCalledTimes(1);
+            expect(window.location.pathname).toBe('/vt-dest');
+            // @ts-expect-error — restoring to undefined to not affect other tests
+            delete document.startViewTransition;
+        });
+
+        it('should navigate without transition when viewTransition is true but API is unavailable', () => {
+            happyWindow.history.pushState({}, '', '/vt-fallback-start');
+            // Ensure the API is absent
+            // @ts-expect-error
+            delete document.startViewTransition;
+            const popstateSpy = vi.fn();
+            window.addEventListener('popstate', popstateSpy);
+            const link = UltraLink({ href: '/vt-fallback-dest', children: [], viewTransition: true });
+            link.click();
+            expect(window.location.pathname).toBe('/vt-fallback-dest');
+            expect(popstateSpy).toHaveBeenCalledTimes(1);
+            window.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should not call document.startViewTransition when viewTransition is false', () => {
+            happyWindow.history.pushState({}, '', '/no-vt-start');
+            const transitionSpy = vi.fn((cb: () => void) => cb());
+            Object.defineProperty(document, 'startViewTransition', {
+                value: transitionSpy,
+                configurable: true
+            });
+            const link = UltraLink({ href: '/no-vt-dest', children: [], viewTransition: false });
+            link.click();
+            expect(transitionSpy).not.toHaveBeenCalled();
+            // @ts-expect-error
+            delete document.startViewTransition;
         });
 
     }, time_out);
