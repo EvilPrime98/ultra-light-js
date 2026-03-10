@@ -83,10 +83,11 @@ function deepFreeze<T>(obj: T): T {
 
 /**
  * Returns a stateful getter, setter, and subscriber function for a given initial value.
- * @param initialValue 
- * @returns 
+ * @param initialValue
+ * @param freeze Optional parameter to freeze the state object. Default is false.
+ * @returns
  */
-export function ultraState<T>(initialValue: T): [
+export function ultraState<T>(initialValue: T, freeze = false): [
     () => T,
     (newValue: T) => void,
     (fn: (value: T) => void) => () => void
@@ -95,17 +96,16 @@ export function ultraState<T>(initialValue: T): [
         console.warn('ultraState: initialValue is undefined');
     }
 
-    let value = (typeof initialValue === 'object' && initialValue !== null)
-    ? deepFreeze(initialValue)
-    : initialValue;
+    const maybeFreeze = (v: T): T =>
+        (freeze && typeof v === 'object' && v !== null) ? deepFreeze(v) : v;
+
+    let value = maybeFreeze(initialValue);
 
     const subscribers = new Set<(value: T) => void>();
 
     const setValue = (newValue: T): void => {
         if (typeof value !== 'object' && value === newValue) return;
-        value = (typeof newValue === 'object' && newValue !== null)
-        ? deepFreeze(newValue)
-        : newValue;
+        value = maybeFreeze(newValue);
         subscribers.forEach(fn => {
             try {
                 fn(value);
@@ -897,10 +897,12 @@ export function ultraStyles(
  * Useful for managing complex states, global contexts, or nested states. Accepts functions as values.
  * Functions are called with the state object as the first argument.
  * @param initialComp Initial composite state object.
+ * @param freeze Optional parameter to freeze ALL the state objects. Default is false.
  * @returns 
  */
 export function ultraCompState<T extends Record<string, unknown>>(
-    initialComp: T
+    initialComp: T,
+    freeze = false
 ): UltraCompStateResult<T> {
     if (typeof initialComp !== 'object' || initialComp === null) {
         throw new Error('ultraCompState: initial value cannot be a primitive or null.');
@@ -913,7 +915,7 @@ export function ultraCompState<T extends Record<string, unknown>>(
             }
             return;
         }
-        const [getValue, setValue, subscribeToValue] = ultraState(initialComp[key]);
+        const [getValue, setValue, subscribeToValue] = ultraState(initialComp[key], freeze);
         (comp as any)[key] = {
             get: getValue,
             set: setValue,

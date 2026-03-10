@@ -101,7 +101,62 @@ describe('hooks', () => {
             expect(detected).toBe(true);
         });
 
-        it('state should not be mutable', () => {
+        it('state should be mutable if freeze is false', () => {
+            expect(() => {
+                get().a = 1;
+            }).not.toThrowError();
+        });
+
+    }, time_out);
+
+    suite('ultraState: non-primitive state: freeze option is enabled', () => {
+
+        const [get, set, subscribe] = ultraState({
+            a: 0,
+            b: 0,
+            c: 0,
+        }, true);
+
+        it('should return stateful getter, setter, and subscriber functions', () => {
+            expect(get).toBeInstanceOf(Function);
+            expect(set).toBeInstanceOf(Function);
+            expect(subscribe).toBeInstanceOf(Function);
+        });
+
+        it('should return the initial value', () => {
+            expect(get()).toEqual({
+                a: 0,
+                b: 0,
+                c: 0,
+            });
+            expect(typeof get()).toBe('object');
+        });
+
+        it('should set the value', () => {
+            set({ ...get(), a: get().a + 1 });
+            expect(get().a).toBeGreaterThan(0);
+            expect(typeof get()).toBe('object');
+        });
+
+        it('subscriber should notify when the value changes', () => {
+            let detected = false;
+            subscribe(() => {
+                detected = true;
+            });
+            set({ ...get(), a: get().a + 1 });
+            expect(detected).toBe(true);
+        });
+
+        it('subscriber should notify when the value does not change since it is a reference', () => {
+            let detected = false;
+            subscribe(() => {
+                detected = true;
+            });
+            set({ ...get() });
+            expect(detected).toBe(true);
+        });
+
+        it('state should not be mutable if freeze is true', () => {
             expect(() => {
                 get().a = 1;
             }).toThrowError();
@@ -376,11 +431,14 @@ describe('hooks', () => {
         it('subscribe() should notify when the value changes', () => {
             ['a', 'b', 'c'].forEach((key) => {
                 let detected = false;
+                //@ts-expect-error
                 foo[key].subscribe(() => {
                     detected = true;
                 });
+                //@ts-expect-error
                 foo[key].set(1);
                 expect(detected).toBe(true);
+                //@ts-expect-error
                 foo[key].set(0);
                 expect(detected).toBe(true);
             });
