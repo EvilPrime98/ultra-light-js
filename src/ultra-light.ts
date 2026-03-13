@@ -877,3 +877,92 @@ export function ultraCompState<T extends Record<string, unknown>>(
     });
     return comp;
 }
+
+export function ultraQuery() {
+
+    const [cache, setCache, subscribeToCache] = ultraState<Record<string, any>>({});
+    const [isFetching, setIsFetching, subscribeToFetching] = ultraState<boolean>(false);
+    const [hasError, setHasError, subscribeToError] = ultraState<boolean>(false);
+
+    const timerMap = new Map<string, ReturnType<typeof setTimeout>>();
+    const pendingMap = new Map<string, Promise<void>>();
+
+    const invalidateCache = (key: string) => {
+        const { [key]: _, ...newCache } = cache();
+        setCache(newCache);
+        if (timerMap.has(key)) {
+            clearTimeout(timerMap.get(key)!);
+            timerMap.delete(key);
+        }
+    };
+
+    const addCache = (key: string, value: any, staleTime: number) => {
+        if (timerMap.has(key)) {
+            clearTimeout(timerMap.get(key)!);
+        }
+        setCache({ ...cache(), [key]: value });
+        const timer = setTimeout(() => {
+            invalidateCache(key);
+        }, staleTime);
+        timerMap.set(key, timer);
+    };
+
+    const fetch = async (
+        key: string,
+        fetcher: () => Promise<any>,
+        staleTime: number = 5 * 60 * 1000
+    ) => {
+        //@ts-expect-error: hasOwn does exist
+        if (Object.hasOwn(cache(), key)) {
+            return {
+                hasError,
+                isFetching,
+                data: cache()[key],
+            };
+        }
+
+        if (pendingMap.has(key)) {
+            await pendingMap.get(key);
+            return {
+                hasError,
+                isFetching,
+                data: cache()[key],
+            };
+        }
+
+        setIsFetching(true);
+        setHasError(false);
+
+        const pending: Promise<void> = (async () => {
+            try {
+                const data = await fetcher();
+                addCache(key, data, staleTime);
+            } catch (error) {
+                setHasError(true);
+            } finally {
+                setIsFetching(false);
+                pendingMap.delete(key);
+            }
+        })();
+
+        pendingMap.set(key, pending);
+        await pending;
+
+        return {
+            hasError,
+            isFetching,
+            data: cache()[key],
+        };
+    };
+
+    return {
+        fetch,
+        isFetching,
+        hasError,
+        cache,
+        invalidateCache,
+        subscribeToFetching,
+        subscribeToError,
+        subscribeToCache,
+    };
+}

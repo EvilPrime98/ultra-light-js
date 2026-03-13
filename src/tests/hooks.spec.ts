@@ -1,10 +1,11 @@
-import { describe, expect, it, suite } from 'vitest';
+import { describe, expect, it, suite, vi } from 'vitest';
 import { parseHTML } from 'linkedom';
 import {
     ultraState,
     UltraContext,
     ultraCompState,
-    ultraStyles
+    ultraStyles,
+    ultraQuery
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -455,6 +456,172 @@ describe('hooks', () => {
         });
 
     }, time_out);
+
+    suite('ultraQuery', () => {
+
+        it('should expose fetch, isFetching, hasError, cache, invalidateCache, and subscribe functions', () => {
+            const q = ultraQuery();
+            expect(q.fetch).toBeInstanceOf(Function);
+            expect(q.isFetching).toBeInstanceOf(Function);
+            expect(q.hasError).toBeInstanceOf(Function);
+            expect(q.cache).toBeInstanceOf(Function);
+            expect(q.invalidateCache).toBeInstanceOf(Function);
+            expect(q.subscribeToFetching).toBeInstanceOf(Function);
+            expect(q.subscribeToError).toBeInstanceOf(Function);
+            expect(q.subscribeToCache).toBeInstanceOf(Function);
+        });
+
+        it('fetch() should call the fetcher and return data', async () => {
+            const { fetch, cache } = ultraQuery();
+            const fetcher = vi.fn().mockResolvedValue({ id: 1 });
+            const result = await fetch('key', fetcher);
+            expect(fetcher).toHaveBeenCalledTimes(1);
+            expect(result?.data).toEqual({ id: 1 });
+            expect(cache()['key']).toEqual({ id: 1 });
+        });
+
+        it('fetch() should return cached data on second call without calling fetcher again', async () => {
+            const { fetch } = ultraQuery();
+            const fetcher = vi.fn().mockResolvedValue({ id: 2 });
+            await fetch('key', fetcher);
+            const result = await fetch('key', fetcher);
+            expect(fetcher).toHaveBeenCalledTimes(1);
+            expect(result?.data).toEqual({ id: 2 });
+        });
+
+        it('fetch() should set isFetching to true during the request and false after', async () => {
+            const { fetch, isFetching } = ultraQuery();
+            let fetchingDuringRequest = false;
+            const fetcher = vi.fn().mockImplementation(async () => {
+                fetchingDuringRequest = isFetching();
+                return { id: 3 };
+            });
+            await fetch('key', fetcher);
+            expect(fetchingDuringRequest).toBe(true);
+            expect(isFetching()).toBe(false);
+        });
+
+        it('fetch() should set hasError to true when the fetcher throws', async () => {
+            const { fetch, hasError } = ultraQuery();
+            const fetcher = vi.fn().mockRejectedValue(new Error('Network error'));
+            const result = await fetch('key', fetcher);
+            expect(hasError()).toBe(true);
+            expect(result?.data).toBeUndefined();
+        });
+
+        it('fetch() should reset hasError to false on a subsequent successful fetch', async () => {
+            const { fetch, hasError } = ultraQuery();
+            const failFetcher = vi.fn().mockRejectedValue(new Error('fail'));
+            await fetch('key', failFetcher);
+            expect(hasError()).toBe(true);
+            const successFetcher = vi.fn().mockResolvedValue({ ok: true });
+            await fetch('key', successFetcher);
+            expect(hasError()).toBe(false);
+        });
+
+        it('fetch() should leave isFetching as false after an error', async () => {
+            const { fetch, isFetching } = ultraQuery();
+            const fetcher = vi.fn().mockRejectedValue(new Error('fail'));
+            await fetch('key', fetcher);
+            expect(isFetching()).toBe(false);
+        });
+
+        it('invalidateCache() should remove a key from the cache', async () => {
+            const { fetch, cache, invalidateCache } = ultraQuery();
+            const fetcher = vi.fn().mockResolvedValue({ id: 4 });
+            await fetch('key', fetcher);
+            expect(cache()['key']).toBeDefined();
+            invalidateCache('key');
+            expect(cache()['key']).toBeUndefined();
+        });
+
+        it('fetch() should refetch after cache invalidation', async () => {
+            const { fetch, invalidateCache } = ultraQuery();
+            const fetcher = vi.fn().mockResolvedValue({ id: 5 });
+            await fetch('key', fetcher);
+            invalidateCache('key');
+            await fetch('key', fetcher);
+            expect(fetcher).toHaveBeenCalledTimes(2);
+        });
+
+        it('fetch() should deduplicate concurrent in-flight requests for the same key', async () => {
+            const { fetch } = ultraQuery();
+            let resolve: (v: any) => void;
+            const fetcher = vi.fn().mockImplementation(
+                () => new Promise(r => { resolve = r; })
+            );
+            const p1 = fetch('key', fetcher);
+            const p2 = fetch('key', fetcher);
+            resolve!({ id: 6 });
+            const [r1, r2] = await Promise.all([p1, p2]);
+            expect(fetcher).toHaveBeenCalledTimes(1);
+            expect(r1?.data).toEqual({ id: 6 });
+            expect(r2?.data).toEqual({ id: 6 });
+        });
+
+        it('fetch() should automatically invalidate cache after staleTime', async () => {
+            vi.useFakeTimers();
+            try {
+                const { fetch, cache } = ultraQuery();
+                const fetcher = vi.fn().mockResolvedValue({ id: 7 });
+                await fetch('key', fetcher, 100);
+                expect(cache()['key']).toBeDefined();
+                vi.advanceTimersByTime(101);
+                expect(cache()['key']).toBeUndefined();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('re-fetching after staleTime should not be invalidated by the old stale timer', async () => {
+            vi.useFakeTimers();
+            try {
+                const { fetch, cache, invalidateCache } = ultraQuery();
+                const fetcher = vi.fn().mockResolvedValue({ id: 8 });
+                await fetch('key', fetcher, 100);
+                invalidateCache('key');
+                await fetch('key', fetcher, 200);
+                expect(cache()['key']).toBeDefined();
+                vi.advanceTimersByTime(150);
+                expect(cache()['key']).toBeDefined();
+                vi.advanceTimersByTime(60);
+                expect(cache()['key']).toBeUndefined();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('subscribeToFetching() should notify when isFetching changes', async () => {
+            const { fetch, subscribeToFetching } = ultraQuery();
+            const events: boolean[] = [];
+            subscribeToFetching(v => events.push(v));
+            const fetcher = vi.fn().mockResolvedValue({ id: 9 });
+            await fetch('key', fetcher);
+            expect(events).toContain(true);
+            expect(events[events.length - 1]).toBe(false);
+        });
+
+        it('subscribeToError() should notify when hasError becomes true', async () => {
+            const { fetch, subscribeToError } = ultraQuery();
+            let detected = false;
+            subscribeToError(v => { if (v) detected = true; });
+            const fetcher = vi.fn().mockRejectedValue(new Error('fail'));
+            await fetch('key', fetcher);
+            expect(detected).toBe(true);
+        });
+
+        it('subscribeToCache() should notify when a key is added or removed', async () => {
+            const { fetch, invalidateCache, subscribeToCache } = ultraQuery();
+            let notifications = 0;
+            subscribeToCache(() => notifications++);
+            const fetcher = vi.fn().mockResolvedValue({ id: 10 });
+            await fetch('key', fetcher);
+            expect(notifications).toBe(1);
+            invalidateCache('key');
+            expect(notifications).toBe(2);
+        });
+
+    }, time_out * 5);
 
     suite('ultraStyles', () => {
 
