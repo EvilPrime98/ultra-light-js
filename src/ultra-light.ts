@@ -23,7 +23,8 @@ export type {
     UltraLightElement,
     UltraLightAnchor,
     UltraLightDiv,
-    IUltraCompStateStateful
+    IUltraCompStateStateful,
+    UltraRenderableElement
 }
 
 const SVG_EXCLUSIVE_TAGS = new Set([
@@ -125,54 +126,6 @@ export function ultraState<T>(initialValue: T, freeze = false): [
         setValue,
         subscribe
     ];
-}
-
-export function ultraEffect(
-    fn: () => void | UltraCleanupFunction | Promise<void | UltraCleanupFunction>,
-    subscriberArray: Array<(callback: () => void) => () => void>
-): UltraCleanupFunction {
-
-    let mainCleanup: UltraCleanupFunction | null = null;
-
-    const runFn = async () => {
-        try {
-            const result = await fn();
-            if (typeof result === "function") {
-                mainCleanup = result;
-            }
-        } catch (error) {
-            console.error("Error en ultraEffect:", error);
-        }
-    };
-
-    runFn();
-
-    const unsubscribers = subscriberArray.map(subscriber => {
-        try {
-            return subscriber(runFn);
-        } catch (error) {
-            console.error("Error al suscribir en ultraEffect:", error);
-            return null;
-        }
-    });
-
-    return async () => {
-        if (mainCleanup) {
-            try {
-                await mainCleanup();
-            } catch (error) {
-                console.error("Error al ejecutar cleanup principal en ultraEffect:", error);
-            }
-        }
-        for (const unsub of unsubscribers) {
-            if (!unsub) continue;
-            try {
-                await Promise.resolve(unsub());
-            } catch (error) {
-                console.error("Error al limpiar ultraEffect:", error);
-            }
-        }
-    };
 }
 
 export function UltraContext<T>(
