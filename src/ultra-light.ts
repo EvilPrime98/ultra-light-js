@@ -321,6 +321,43 @@ export function UltraRouter(
 }
 
 /**
+ * Navigates to a new page within the UltraRouter context.
+ * @param props
+ * @param props.href The href of the link. It should be a relative path.
+ * @param props.viewTransition When true, the navigation to the new page will happen using the viewtransition API.
+ */
+export function ultraNavigate({
+    href,
+    viewTransition = false
+}:{
+    href: string;
+    viewTransition?: boolean;
+}): void {
+    function navigate() {
+        try {
+            window.history.pushState({}, '', href);
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            window.dispatchEvent(new PopStateEvent('popstate'));
+        } catch (error) {
+            console.error('ultraNavigate: Navigation error:', error);
+        }
+    }
+    if (!href) {
+        console.warn('ultraNavigate: a valid href is required');
+        return;
+    }
+    if (!viewTransition) {
+        navigate();
+    }else{
+        if (!document.startViewTransition) {
+            navigate();
+            return;
+        }
+        document.startViewTransition(navigate);
+    }
+}
+
+/**
  * This functional component is used to create a link element that works within
  * the UltraRouter context.
  */

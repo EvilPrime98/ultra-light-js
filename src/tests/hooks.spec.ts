@@ -1,11 +1,13 @@
-import { describe, expect, it, suite, vi } from 'vitest';
+import { describe, expect, it, suite, vi, beforeAll } from 'vitest';
 import { parseHTML } from 'linkedom';
+import { Window } from 'happy-dom';
 import {
     ultraState,
     UltraContext,
     ultraCompState,
     ultraStyles,
-    ultraQuery
+    ultraQuery,
+    ultraNavigate
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -622,6 +624,100 @@ describe('hooks', () => {
         });
 
     }, time_out * 5);
+
+    suite('ultraNavigate', () => {
+
+        const happyWindow = new Window({ url: 'about:/' });
+
+        beforeAll(() => {
+            Object.assign(globalThis, {
+                window: happyWindow,
+                document: happyWindow.document,
+                PopStateEvent: happyWindow.PopStateEvent,
+            });
+        });
+
+        it('should warn and not navigate when href is empty', () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+            const popstateSpy = vi.fn();
+            happyWindow.addEventListener('popstate', popstateSpy);
+            ultraNavigate({ href: '' });
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('ultraNavigate'));
+            expect(popstateSpy).not.toHaveBeenCalled();
+            warnSpy.mockRestore();
+            happyWindow.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should push history state and dispatch popstate on basic navigation', () => {
+            happyWindow.history.pushState({}, '', '/start');
+            const popstateSpy = vi.fn();
+            happyWindow.addEventListener('popstate', popstateSpy);
+            ultraNavigate({ href: '/destination' });
+            expect(happyWindow.location.pathname).toBe('/destination');
+            expect(popstateSpy).toHaveBeenCalledTimes(1);
+            happyWindow.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should call window.scrollTo on navigation', () => {
+            happyWindow.history.pushState({}, '', '/scroll-start');
+            const scrollSpy = vi.spyOn(happyWindow, 'scrollTo').mockImplementation(() => { });
+            ultraNavigate({ href: '/scroll-dest' });
+            expect(scrollSpy).toHaveBeenCalledWith({ top: 0, behavior: 'instant' });
+            scrollSpy.mockRestore();
+        });
+
+        it('should navigate directly when viewTransition is false (default)', () => {
+            happyWindow.history.pushState({}, '', '/no-vt-start');
+            const popstateSpy = vi.fn();
+            happyWindow.addEventListener('popstate', popstateSpy);
+            ultraNavigate({ href: '/no-vt-dest' });
+            expect(happyWindow.location.pathname).toBe('/no-vt-dest');
+            expect(popstateSpy).toHaveBeenCalledTimes(1);
+            happyWindow.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should call document.startViewTransition when viewTransition is true and API is available', () => {
+            happyWindow.history.pushState({}, '', '/vt-start');
+            const transitionSpy = vi.fn((cb: () => void) => cb());
+            Object.defineProperty(happyWindow.document, 'startViewTransition', {
+                value: transitionSpy,
+                configurable: true,
+                writable: true,
+            });
+            ultraNavigate({ href: '/vt-dest', viewTransition: true });
+            expect(transitionSpy).toHaveBeenCalledTimes(1);
+            expect(happyWindow.location.pathname).toBe('/vt-dest');
+            // @ts-expect-error
+            delete happyWindow.document.startViewTransition;
+        });
+
+        it('should fall back to direct navigation when viewTransition is true but API is unavailable', () => {
+            happyWindow.history.pushState({}, '', '/vt-fallback-start');
+            // @ts-expect-error
+            delete happyWindow.document.startViewTransition;
+            const popstateSpy = vi.fn();
+            happyWindow.addEventListener('popstate', popstateSpy);
+            ultraNavigate({ href: '/vt-fallback-dest', viewTransition: true });
+            expect(happyWindow.location.pathname).toBe('/vt-fallback-dest');
+            expect(popstateSpy).toHaveBeenCalledTimes(1);
+            happyWindow.removeEventListener('popstate', popstateSpy);
+        });
+
+        it('should log an error and not throw when pushState fails', () => {
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+            const pushStateSpy = vi.spyOn(happyWindow.history, 'pushState').mockImplementation(() => {
+                throw new Error('SecurityError');
+            });
+            expect(() => ultraNavigate({ href: '/error-dest' })).not.toThrow();
+            expect(errorSpy).toHaveBeenCalledWith(
+                expect.stringContaining('ultraNavigate'),
+                expect.any(Error)
+            );
+            errorSpy.mockRestore();
+            pushStateSpy.mockRestore();
+        });
+
+    }, time_out);
 
     suite('ultraStyles', () => {
 
