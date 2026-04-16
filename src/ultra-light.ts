@@ -726,9 +726,16 @@ export function UltraActivity({
             console.error(`Error while applying class ${className}:`, error);
         }
     });
-
+    
+    const fragmentChildren:(HTMLElement|Node)[] = []; //only used when the component is a fragment
+    if (element.nodeType === 11 /* DOCUMENT_FRAGMENT_NODE */) {
+        Array.from(element.childNodes).forEach(child => fragmentChildren.push(child));
+    }
     childrenElements.forEach(childElement => {
         if (childElement) {
+            if (element.nodeType === 11 /* DOCUMENT_FRAGMENT_NODE */) {
+                fragmentChildren.push(childElement);
+            }
             element.appendChild(childElement);
             if (hasCleanup(childElement)) {
                 cleanupFunctions.push(childElement._cleanup!);
@@ -740,7 +747,7 @@ export function UltraActivity({
         try {
             const current = mode.state();
             const targets = (element.nodeType === 11 /* DOCUMENT_FRAGMENT_NODE */)
-            ? (Array.from(element.children) as HTMLElement[])
+            ? fragmentChildren as HTMLElement[]
             : [element as HTMLElement];
             if (type === 'display') {
                 targets.forEach(el => el.style.display = current ? '' : 'none');

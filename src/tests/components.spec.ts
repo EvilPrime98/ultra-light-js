@@ -423,81 +423,113 @@ describe('Components', () => {
             expect(($el as HTMLElement).children.length).toBe(2);
         });
 
-        it('should set display:none on all DocumentFragment children when mode state is false', () => {
-            const fragment = document.createDocumentFragment();
-            const div1 = document.createElement('div');
-            const div2 = document.createElement('div');
-            fragment.appendChild(div1);
-            fragment.appendChild(div2);
+        it('should set display:none on all DocumentFragment children when initial mode state is false', () => {
+            const [getVisible, setVisible, subscribe] = ultraState(false);
+            const $fragment = document.createDocumentFragment();
+            const $div1 = document.createElement('div');
+            const $div2 = document.createElement('div');
+            $fragment.appendChild($div1);
+            $fragment.appendChild($div2);
             UltraActivity({
-                component: fragment as unknown as string,
-                mode: { state: () => false, subscriber: () => () => { } }
-            });
-            expect(div1.style.display).toBe('none');
-            expect(div2.style.display).toBe('none');
-        });
-
-        it('should set display:"" on all DocumentFragment children when mode state is true', () => {
-            const fragment = document.createDocumentFragment();
-            const div1 = document.createElement('div');
-            const div2 = document.createElement('div');
-            fragment.appendChild(div1);
-            fragment.appendChild(div2);
-            UltraActivity({
-                component: fragment as unknown as string,
-                mode: { state: () => true, subscriber: () => () => { } }
-            });
-            expect(div1.style.display).toBe('');
-            expect(div2.style.display).toBe('');
-        });
-
-        it('should update display on DocumentFragment children when subscriber notifies', () => {
-            const ref: { update: (() => void) | null } = { update: null };
-            let visible = false;
-            const fragment = document.createDocumentFragment();
-            const child = document.createElement('span');
-            fragment.appendChild(child);
-            UltraActivity({
-                component: fragment as unknown as string,
-                mode: {
-                    state: () => visible,
-                    subscriber: (fn) => { ref.update = fn; return () => { }; }
+                component: $fragment as unknown as string,
+                mode: { 
+                    subscriber: subscribe, 
+                    state: getVisible 
                 }
             });
-            expect(child.style.display).toBe('none');
-            visible = true;
-            ref.update?.();
-            expect(child.style.display).toBe('');
+            expect($div1.style.display).toBe('none');
+            expect($div2.style.display).toBe('none');
         });
 
-        it('should set visibility:hidden on all DocumentFragment children when type is "visibility"', () => {
-            const fragment = document.createDocumentFragment();
-            const div1 = document.createElement('div');
-            const div2 = document.createElement('div');
-            fragment.appendChild(div1);
-            fragment.appendChild(div2);
+        it('should set display:"" on all DocumentFragment children when initial mode state is true', () => {
+            const [getVisible, , subscribe] = ultraState(true);
+            const $fragment = document.createDocumentFragment();
+            const $div1 = document.createElement('div');
+            const $div2 = document.createElement('div');
+            $fragment.appendChild($div1);
+            $fragment.appendChild($div2);
             UltraActivity({
-                component: fragment as unknown as string,
-                mode: { state: () => false, subscriber: () => () => { } },
+                component: $fragment as unknown as string,
+                mode: { state: getVisible, subscriber: subscribe }
+            });
+            expect($div1.style.display).toBe('');
+            expect($div2.style.display).toBe('');
+        });
+
+        it('should reactively toggle display on DocumentFragment children when state changes', () => {
+            const [getVisible, setVisible, subscribe] = ultraState(false);
+            const $fragment = document.createDocumentFragment();
+            const $child = document.createElement('span');
+            $fragment.appendChild($child);
+            UltraActivity({
+                component: $fragment as unknown as string,
+                mode: { state: getVisible, subscriber: subscribe }
+            });
+            expect($child.style.display).toBe('none');
+            setVisible(true);
+            expect($child.style.display).toBe('');
+            setVisible(false);
+            expect($child.style.display).toBe('none');
+        });
+
+        it('should set visibility:hidden on all DocumentFragment children when type is "visibility" and state is false', () => {
+            const [getVisible, , subscribe] = ultraState(false);
+            const $fragment = document.createDocumentFragment();
+            const $div1 = document.createElement('div');
+            const $div2 = document.createElement('div');
+            $fragment.appendChild($div1);
+            $fragment.appendChild($div2);
+            UltraActivity({
+                component: $fragment as unknown as string,
+                mode: { state: getVisible, subscriber: subscribe },
                 type: 'visibility'
             });
-            expect(div1.style.visibility).toBe('hidden');
-            expect(div2.style.visibility).toBe('hidden');
+            expect($div1.style.visibility).toBe('hidden');
+            expect($div2.style.visibility).toBe('hidden');
         });
 
         it('should set visibility:visible on all DocumentFragment children when type is "visibility" and state is true', () => {
-            const fragment = document.createDocumentFragment();
-            const div1 = document.createElement('div');
-            const div2 = document.createElement('div');
-            fragment.appendChild(div1);
-            fragment.appendChild(div2);
+            const [getVisible, , subscribe] = ultraState(true);
+            const $fragment = document.createDocumentFragment();
+            const $div1 = document.createElement('div');
+            const $div2 = document.createElement('div');
+            $fragment.appendChild($div1);
+            $fragment.appendChild($div2);
             UltraActivity({
-                component: fragment as unknown as string,
-                mode: { state: () => true, subscriber: () => () => { } },
+                component: $fragment as unknown as string,
+                mode: { state: getVisible, subscriber: subscribe },
                 type: 'visibility'
             });
-            expect(div1.style.visibility).toBe('visible');
-            expect(div2.style.visibility).toBe('visible');
+            expect($div1.style.visibility).toBe('visible');
+            expect($div2.style.visibility).toBe('visible');
+        });
+
+        it('should reactively toggle visibility on DocumentFragment children when state changes', () => {
+            const [getVisible, setVisible, subscribe] = ultraState(true);
+            const $fragment = document.createDocumentFragment();
+            const $child = document.createElement('div');
+            $fragment.appendChild($child);
+            UltraActivity({
+                component: $fragment as unknown as string,
+                mode: { state: getVisible, subscriber: subscribe },
+                type: 'visibility'
+            });
+            expect($child.style.visibility).toBe('visible');
+            setVisible(false);
+            expect($child.style.visibility).toBe('hidden');
+        });
+
+        it('should apply display to both pre-existing and prop-children on a DocumentFragment', () => {
+            const [getVisible, , subscribe] = ultraState(false);
+            const $fragment = document.createDocumentFragment();
+            const $existing = document.createElement('div');
+            $fragment.appendChild($existing);
+            UltraActivity({
+                component: $fragment as unknown as string,
+                mode: { state: getVisible, subscriber: subscribe },
+                children: ['<span></span>']
+            });
+            expect($existing.style.display).toBe('none');
         });
 
     }, time_out);
