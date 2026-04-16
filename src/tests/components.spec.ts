@@ -414,6 +414,92 @@ describe('Components', () => {
             expect(cleanupCalled).toBe(true);
         });
 
+        it('should skip null values in children array', () => {
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => { } },
+                children: ['<span></span>', null, '<em></em>']
+            });
+            expect(($el as HTMLElement).children.length).toBe(2);
+        });
+
+        it('should set display:none on all DocumentFragment children when mode state is false', () => {
+            const fragment = document.createDocumentFragment();
+            const div1 = document.createElement('div');
+            const div2 = document.createElement('div');
+            fragment.appendChild(div1);
+            fragment.appendChild(div2);
+            UltraActivity({
+                component: fragment as unknown as string,
+                mode: { state: () => false, subscriber: () => () => { } }
+            });
+            expect(div1.style.display).toBe('none');
+            expect(div2.style.display).toBe('none');
+        });
+
+        it('should set display:"" on all DocumentFragment children when mode state is true', () => {
+            const fragment = document.createDocumentFragment();
+            const div1 = document.createElement('div');
+            const div2 = document.createElement('div');
+            fragment.appendChild(div1);
+            fragment.appendChild(div2);
+            UltraActivity({
+                component: fragment as unknown as string,
+                mode: { state: () => true, subscriber: () => () => { } }
+            });
+            expect(div1.style.display).toBe('');
+            expect(div2.style.display).toBe('');
+        });
+
+        it('should update display on DocumentFragment children when subscriber notifies', () => {
+            const ref: { update: (() => void) | null } = { update: null };
+            let visible = false;
+            const fragment = document.createDocumentFragment();
+            const child = document.createElement('span');
+            fragment.appendChild(child);
+            UltraActivity({
+                component: fragment as unknown as string,
+                mode: {
+                    state: () => visible,
+                    subscriber: (fn) => { ref.update = fn; return () => { }; }
+                }
+            });
+            expect(child.style.display).toBe('none');
+            visible = true;
+            ref.update?.();
+            expect(child.style.display).toBe('');
+        });
+
+        it('should set visibility:hidden on all DocumentFragment children when type is "visibility"', () => {
+            const fragment = document.createDocumentFragment();
+            const div1 = document.createElement('div');
+            const div2 = document.createElement('div');
+            fragment.appendChild(div1);
+            fragment.appendChild(div2);
+            UltraActivity({
+                component: fragment as unknown as string,
+                mode: { state: () => false, subscriber: () => () => { } },
+                type: 'visibility'
+            });
+            expect(div1.style.visibility).toBe('hidden');
+            expect(div2.style.visibility).toBe('hidden');
+        });
+
+        it('should set visibility:visible on all DocumentFragment children when type is "visibility" and state is true', () => {
+            const fragment = document.createDocumentFragment();
+            const div1 = document.createElement('div');
+            const div2 = document.createElement('div');
+            fragment.appendChild(div1);
+            fragment.appendChild(div2);
+            UltraActivity({
+                component: fragment as unknown as string,
+                mode: { state: () => true, subscriber: () => () => { } },
+                type: 'visibility'
+            });
+            expect(div1.style.visibility).toBe('visible');
+            expect(div2.style.visibility).toBe('visible');
+        });
+
     }, time_out);
 
     suite('UltraRouter', () => {

@@ -688,20 +688,21 @@ export function UltraActivity({
     const supportedTypes = ['display', 'visibility'];
 
     if (!supportedTypes.includes(type)) {
-        console.warn(`Activity: tipo no soportado. Se usará display por defecto. Tipos soportados: ${supportedTypes.join(', ')}`);
+        console.warn(`Activity: type not supported. Display will be used by default. Supported types: ${supportedTypes.join(', ')}`);
         type = 'display';
     }
 
     const element = parseHTMLString(component) as UltraLightElement;
 
     if (!element) {
-        console.error('Activity: No se pudo crear el elemento');
+        console.error('Activity: Could not create element');
         return document.createElement('div') as UltraLightElement;
     }
 
+    const childrenElements = children.filter(child => child !== null).map(child => parseHTMLString(child));
+
     const cleanupFunctions: UltraCleanupFunction[] = [];
 
-    // Add cleanup functions for event handlers
     (Object.keys(eventHandler) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
         const handler = eventHandler[event];
         if (handler) {
@@ -710,28 +711,23 @@ export function UltraActivity({
         }
     });
 
-    // Add styles
     Object.keys(styles).forEach(key => {
         try {
             (element as HTMLElement).style[key as any] = styles[key as keyof CSSStyleDeclaration] as string;
         } catch (error) {
-            console.error(`Error al aplicar estilo ${key}:`, error);
+            console.error(`Error while applying style ${key}:`, error);
         }
     });
 
-    // Add class names
     className.forEach(className => {
         try {
             if (className) element.classList.add(className);
         } catch (error) {
-            console.error(`Error al aplicar clase ${className}:`, error);
+            console.error(`Error while applying class ${className}:`, error);
         }
     });
 
-    // Add children
-    children.forEach(child => {
-        if (!child) return;
-        const childElement = parseHTMLString(child);
+    childrenElements.forEach(childElement => {
         if (childElement) {
             element.appendChild(childElement);
             if (hasCleanup(childElement)) {
@@ -740,18 +736,19 @@ export function UltraActivity({
         }
     });
 
-    // Update visibility based on mode
     const update = (): void => {
         try {
             const current = mode.state();
-
+            const targets = (element.nodeType === 11 /* DOCUMENT_FRAGMENT_NODE */)
+            ? (Array.from(element.children) as HTMLElement[])
+            : [element as HTMLElement];
             if (type === 'display') {
-                (element as HTMLElement).style.display = current ? '' : 'none';
+                targets.forEach(el => el.style.display = current ? '' : 'none');
             } else if (type === 'visibility') {
-                (element as HTMLElement).style.visibility = current ? 'visible' : 'hidden';
+                targets.forEach(el => el.style.visibility = current ? 'visible' : 'hidden');
             }
         } catch (error) {
-            console.error('Error al actualizar Activity:', error);
+            console.error('Error while updating Activity:', error);
         }
     };
 
@@ -771,7 +768,6 @@ export function UltraActivity({
 
     update();
 
-    // Add onMount functions
     onMount.forEach(fn => {
         requestAnimationFrame(() => {
             try {
@@ -782,7 +778,6 @@ export function UltraActivity({
         });
     });
     
-    // Add cleanup functions for triggers
     trigger.forEach(t => {
         const { subscriber, triggerFunction, defer } = t;
         if (subscriber && triggerFunction) {
@@ -795,32 +790,31 @@ export function UltraActivity({
                     cleanupFunctions.push(unsub);
                 }
             } catch (error) {
-                console.error('Error en trigger de Activity:', error);
+                console.error('Error in Activity trigger:', error);
             }
         }
     });
 
-    // Add special cleanup functions
     cleanup.forEach(fn => {
         try {
             cleanupFunctions.push(fn);
         } catch (error) {
-            console.error('Error añadiendo cleanup de Activity:', error);
+            console.error('Error adding cleanup to Activity:', error);
         }
     });
 
-    // Add cleanup function for element
     element._cleanup = () => {
         cleanupFunctions.forEach(cleanup => {
             try {
                 cleanup();
             } catch (error) {
-                console.error('Error al limpiar Activity:', error);
+                console.error('Error while cleaning up Activity:', error);
             }
         });
     };
 
     return element;
+
 }
 
 const styleCache = new Map<string, Record<string, string>>();
