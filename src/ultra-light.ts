@@ -920,7 +920,8 @@ export function ultraQuery() {
 
     const [cache, setCache, subscribeToCache] = ultraState<Record<string, any>>({});
     const [isFetching, setIsFetching, subscribeToFetching] = ultraState<boolean>(false);
-    const [hasError, setHasError, subscribeToError] = ultraState<boolean>(false);
+    const [hasError, setHasError, subscribeToHasError] = ultraState<boolean>(false);
+    const [error, setError, subscribeToError] = ultraState<unknown|null>(null);
 
     const timerMap = new Map<string, ReturnType<typeof setTimeout>>();
     const pendingMap = new Map<string, Promise<void>>();
@@ -970,6 +971,7 @@ export function ultraQuery() {
 
         setIsFetching(true);
         setHasError(false);
+        setError(null);
 
         const pending: Promise<void> = (async () => {
             try {
@@ -977,6 +979,7 @@ export function ultraQuery() {
                 addCache(key, data, staleTime);
             } catch (error) {
                 setHasError(true);
+                setError(error);
             } finally {
                 setIsFetching(false);
                 pendingMap.delete(key);
@@ -994,13 +997,19 @@ export function ultraQuery() {
     };
 
     return {
+        //states
         fetch,
         isFetching,
         hasError,
-        cache,
-        invalidateCache,
+        error,
+        //subscriber
         subscribeToFetching,
+        subscribeToHasError,
         subscribeToError,
         subscribeToCache,
+        //functions
+        cache,
+        invalidateCache,
     };
+
 }
