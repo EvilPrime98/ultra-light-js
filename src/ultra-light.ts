@@ -1048,3 +1048,27 @@ export function ultraQuery() {
     };
 
 }
+
+/**
+ * Utility function to create a portal element outside of the application flow.
+ * @param app A selector that identifies the application element.
+ * @param portal A component to be ported to the application.
+ */
+export function ultraPortal(
+    app: string | HTMLElement,
+    portal: UltraRenderableElement
+){  
+    
+    const $app = (typeof app === 'string') ? document.querySelector(app) : app;
+    if (!$app) {
+        throw new Error('UltraPortal: No application found with selector:');
+    }
+
+    const $portalElement = parseHTMLString(portal);
+    if (!$portalElement) {
+        throw new Error('UltraPortal: Invalid portal element');
+    }
+
+    $app.after($portalElement);
+
+}

@@ -7,7 +7,8 @@ import {
     ultraState,
     type UltraLightElement,
     UltraRouter,
-    UltraLink
+    UltraLink,
+    ultraPortal
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -509,9 +510,9 @@ describe('Components', () => {
             $fragment.appendChild($div2);
             UltraActivity({
                 component: $fragment as unknown as string,
-                mode: { 
-                    subscriber: subscribe, 
-                    state: getVisible 
+                mode: {
+                    subscriber: subscribe,
+                    state: getVisible
                 }
             });
             expect($div1.style.display).toBe('none');
@@ -756,8 +757,8 @@ describe('Components', () => {
     suite('UltraLink', () => {
 
         beforeAll(() => {
-            Object.assign(globalThis, { 
-                window: happyWindow, 
+            Object.assign(globalThis, {
+                window: happyWindow,
                 document: happyWindow.document,
                 PopStateEvent: happyWindow.PopStateEvent
             });
@@ -904,6 +905,39 @@ describe('Components', () => {
             expect(transitionSpy).not.toHaveBeenCalled();
             // @ts-expect-error
             delete document.startViewTransition;
+        });
+
+    }, time_out);
+
+    suite('ultraPortal', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { window: happyWindow, document: happyWindow.document });
+        });
+
+        it('should throw an error if the app element is not found', () => {
+            expect(() => ultraPortal('#not-found', '<h1>Portal</h1>')).toThrowError();
+        });
+
+        it('should throw an error if the portal element is not valid', () => {
+            expect(() => ultraPortal('body', 'wqewqewqewq')).toThrowError();
+        });
+
+        it('should create a portal element after the app element: string', () => {
+            const $app = document.createElement('div');
+            $app.id = 'app';
+            document.body.appendChild($app);
+            ultraPortal('#app', '<h1>Portal</h1>');
+            expect($app.nextElementSibling?.tagName).toBe('H1');
+        });
+
+        it('should create a portal element after the app element: element', () => {
+            const $app = document.createElement('div');
+            $app.id = 'app';
+            document.body.appendChild($app);
+            // @ts-expect-error
+            ultraPortal($app, '<h1>Portal</h1>');
+            expect($app.nextElementSibling?.tagName).toBe('H1');
         });
 
     }, time_out);
