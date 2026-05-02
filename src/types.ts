@@ -68,3 +68,26 @@ export type UltraCompStateResult<T extends Record<string, unknown>> = {
         ? (...args: Args) => R
         : IUltraCompStateStateful<T[K]>;
 };
+
+type HTMLElementUnion =
+| HTMLElement
+| HTMLInputElement
+| HTMLAnchorElement
+| HTMLButtonElement
+| HTMLImageElement
+| HTMLFormElement
+| HTMLSelectElement
+| HTMLTextAreaElement
+| HTMLVideoElement
+| HTMLAudioElement
+| HTMLIFrameElement
+| HTMLTableElement
+| HTMLMetaElement
+| HTMLLinkElement
+| HTMLScriptElement;
+
+type AnyKey<T> = T extends any ? keyof T : never;
+
+export type AllHTMLAttributes = {
+  [K in AnyKey<HTMLElementUnion>]?: unknown;
+};

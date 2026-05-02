@@ -11,7 +11,8 @@ import {
     hasCleanup,
     type UltraRenderableElement,
     type UltraCompStateResult,
-    type IUltraCompStateStateful
+    type IUltraCompStateStateful,
+    type AllHTMLAttributes
 } from './types';
 
 export type {
@@ -466,6 +467,7 @@ export function UltraFragment(
 export function UltraComponent({
     component,
     eventHandler = {},
+    attributes = {},
     styles = {},
     className = [],
     children = [],
@@ -481,6 +483,10 @@ export function UltraComponent({
      * Object containing the event handlers.
      */
     eventHandler?: Partial<Record<keyof HTMLElementEventMap, EventListenerOrEventListenerObject>>;
+    /** 
+     * Object containing the HTML attributes.
+     */
+    attributes?: Partial<Record<keyof AllHTMLAttributes, string>>;
     /**
      * Object containing the CSS styles.
      */
@@ -533,6 +539,16 @@ export function UltraComponent({
             (node as HTMLElement).style[key as any] = styles[key as keyof CSSStyleDeclaration] as string;
         } catch (error) {
             console.error(`Error al aplicar estilo ${key}:`, error);
+        }
+    });
+
+    //add attributes
+
+    (Object.keys(attributes) as (keyof AllHTMLAttributes)[]).forEach(key => {
+        try {
+            (node as HTMLElement).setAttribute(key as string, attributes[key] as string);
+        } catch (error) {
+            console.error(`Error applying attribute ${String(key)}:`, error);
         }
     });
 
@@ -627,6 +643,7 @@ export function UltraComponent({
 export function UltraActivity({
     component,
     eventHandler = {},
+    attributes = {},
     styles = {},
     className = [],
     children = [],
@@ -644,6 +661,10 @@ export function UltraActivity({
      * Object containing the event handlers.
      */
     eventHandler?: Partial<Record<keyof HTMLElementEventMap, EventListenerOrEventListenerObject>>;
+    /**
+     * Object containing the HTML attributes.
+     */
+    attributes?: Partial<Record<keyof AllHTMLAttributes, string>>;
     /**
      * Object containing the CSS styles.
      */
@@ -711,6 +732,14 @@ export function UltraActivity({
         if (handler) {
             element.addEventListener(event, handler);
             cleanupFunctions.push(() => element.removeEventListener(event, handler));
+        }
+    });
+
+    (Object.keys(attributes) as (keyof AllHTMLAttributes)[]).forEach(key => {
+        try {
+            (element as HTMLElement).setAttribute(key as string, attributes[key] as string);
+        } catch (error) {
+            console.error(`Error applying attribute ${String(key)}:`, error);
         }
     });
 

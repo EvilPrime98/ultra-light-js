@@ -186,6 +186,24 @@ describe('Components', () => {
             expect($el.classList.contains('bar')).toBe(true);
         });
 
+        it('should apply HTML attributes to the element', () => {
+            const $el = UltraComponent({
+                component: '<div></div>',
+                attributes: { id: 'my-id', 'data-value': '42' }
+            });
+            expect(($el as HTMLElement).getAttribute('id')).toBe('my-id');
+            expect(($el as HTMLElement).getAttribute('data-value')).toBe('42');
+        });
+
+        it('should apply aria attributes to the element', () => {
+            const $el = UltraComponent({
+                component: '<button></button>',
+                attributes: { 'aria-label': 'close', 'aria-disabled': 'true' }
+            });
+            expect(($el as HTMLElement).getAttribute('aria-label')).toBe('close');
+            expect(($el as HTMLElement).getAttribute('aria-disabled')).toBe('true');
+        });
+
         it('should append children to the element', () => {
             const $el = UltraComponent({
                 component: '<div></div>',
@@ -393,6 +411,26 @@ describe('Components', () => {
             });
             $el.click();
             expect(clicked).toBe(true);
+        });
+
+        it('should apply HTML attributes to the element', () => {
+            const $el = UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => { } },
+                attributes: { id: 'activity-id', 'data-testid': 'my-activity' }
+            });
+            expect(($el as HTMLElement).getAttribute('id')).toBe('activity-id');
+            expect(($el as HTMLElement).getAttribute('data-testid')).toBe('my-activity');
+        });
+
+        it('should apply aria attributes to the element', () => {
+            const $el = UltraActivity({
+                component: '<button></button>',
+                mode: { state: () => true, subscriber: () => () => { } },
+                attributes: { 'aria-label': 'toggle', 'aria-expanded': 'false' }
+            });
+            expect(($el as HTMLElement).getAttribute('aria-label')).toBe('toggle');
+            expect(($el as HTMLElement).getAttribute('aria-expanded')).toBe('false');
         });
 
         it('should call triggerFunction when the subscriber notifies', () => {
