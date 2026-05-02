@@ -241,6 +241,25 @@ describe('Components', () => {
             expect(triggerCount).toBe(1);
         });
 
+        it('should support an array of subscribers in trigger', () => {
+            const callbacks: (() => void)[] = [];
+            let triggerCount = 0;
+            UltraComponent({
+                component: '<div></div>',
+                trigger: [{
+                    subscriber: [
+                        (fn) => { callbacks.push(fn); return () => { }; },
+                        (fn) => { callbacks.push(fn); return () => { }; }
+                    ],
+                    triggerFunction: () => { triggerCount++; }
+                }]
+            });
+            expect(callbacks).toHaveLength(2);
+            callbacks[0]?.();
+            callbacks[1]?.();
+            expect(triggerCount).toBe(2);
+        });
+
         it('should call custom cleanup functions when _cleanup is called', () => {
             let cleanupCalled = false;
             const $el = UltraComponent({
@@ -401,6 +420,26 @@ describe('Components', () => {
             $el._cleanup?.();
             set(2);
             expect(triggerCount).toBe(1);
+        });
+
+        it('should support an array of subscribers in trigger', () => {
+            const callbacks: (() => void)[] = [];
+            let triggerCount = 0;
+            UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => { } },
+                trigger: [{
+                    subscriber: [
+                        (fn) => { callbacks.push(fn); return () => { }; },
+                        (fn) => { callbacks.push(fn); return () => { }; }
+                    ],
+                    triggerFunction: () => { triggerCount++; }
+                }]
+            });
+            expect(callbacks).toHaveLength(2);
+            callbacks[0]?.();
+            callbacks[1]?.();
+            expect(triggerCount).toBe(2);
         });
 
         it('should call custom cleanup functions when _cleanup is called', () => {

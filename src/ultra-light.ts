@@ -580,10 +580,13 @@ export function UltraComponent({
                 const callback = defer
                     ? () => requestAnimationFrame(() => subscriberFunction(node as HTMLElement))
                     : () => subscriberFunction(node as HTMLElement);
-                const unsubscribe = subscriber(callback);
-                if (unsubscribe) {
-                    cleanupFunctions.push(unsubscribe);
-                }
+                const subscribers = Array.isArray(subscriber) ? subscriber : [subscriber];
+                subscribers.forEach(sub => {
+                    const unsubscribe = sub(callback);
+                    if (unsubscribe) {
+                        cleanupFunctions.push(unsubscribe);
+                    }
+                });
             } catch (error) {
                 console.error('Error en trigger de UltraComponent:', error);
             }
@@ -792,10 +795,13 @@ export function UltraActivity({
                 const callback = defer
                     ? () => requestAnimationFrame(() => triggerFunction(element as HTMLElement))
                     : () => triggerFunction(element as HTMLElement);
-                const unsub = subscriber(callback);
-                if (unsub) {
-                    cleanupFunctions.push(unsub);
-                }
+                const subscribers = Array.isArray(subscriber) ? subscriber : [subscriber];
+                subscribers.forEach(sub => {
+                    const unsub = sub(callback);
+                    if (unsub) {
+                        cleanupFunctions.push(unsub);
+                    }
+                });
             } catch (error) {
                 console.error('Error in Activity trigger:', error);
             }
