@@ -506,7 +506,7 @@ export function UltraComponent({
     /** 
      * Array of functions that are called inmediately after the component is mounted.
      */
-    onMount?: ((node: UltraLightElement) => void)[];
+    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction)[];
     /**
      * Array of cleanup functions.
      */
@@ -580,7 +580,10 @@ export function UltraComponent({
     onMount.forEach(fn => {
         requestAnimationFrame(() => {
             try {
-                fn(node);
+                const cleanup = fn(node);
+                if (cleanup) {
+                    cleanupFunctions.push(cleanup);
+                }
             } catch (error) {
                 console.error('Error while executing onMount function(s):', error);
             }
@@ -702,7 +705,7 @@ export function UltraActivity({
     /** 
      * Array of functions that are called inmediately after the component is mounted.
      */
-    onMount?: ((node: UltraLightElement) => void)[];
+    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction)[];
     /**
      * Array of cleanup functions.
      */
@@ -810,7 +813,10 @@ export function UltraActivity({
     onMount.forEach(fn => {
         requestAnimationFrame(() => {
             try {
-                fn(element);
+                const cleanup = fn(element);
+                if (cleanup) {
+                    cleanupFunctions.push(cleanup);
+                }
             } catch (error) {
                 console.error('Error while executing onMount function(s):', error);
             }
