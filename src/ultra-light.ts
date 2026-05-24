@@ -506,10 +506,11 @@ export function UltraComponent({
      * Array of trigger objects.
      */
     trigger?: UltraTrigger[];
-    /** 
+    /**
      * Array of functions that are called inmediately after the component is mounted.
+     * May be async — a returned cleanup function is registered after the promise resolves.
      */
-    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction)[];
+    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction | Promise<void | UltraCleanupFunction>)[];
     /**
      * Array of cleanup functions.
      */
@@ -581,12 +582,11 @@ export function UltraComponent({
     //add onMount functions
 
     onMount.forEach(fn => {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
             try {
-                const cleanup = fn(node);
-                if (cleanup) {
-                    cleanupFunctions.push(cleanup);
-                }
+                const result = fn(node);
+                const cleanup = result instanceof Promise ? await result : result;
+                if (cleanup) cleanupFunctions.push(cleanup);
             } catch (error) {
                 console.error('Error while executing onMount function(s):', error);
             }
@@ -705,10 +705,11 @@ export function UltraActivity({
      * Type of activity (display or visibility). Default is 'display'.
      */
     type?: 'display' | 'visibility';
-    /** 
+    /**
      * Array of functions that are called inmediately after the component is mounted.
+     * May be async — a returned cleanup function is registered after the promise resolves.
      */
-    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction)[];
+    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction | Promise<void | UltraCleanupFunction>)[];
     /**
      * Array of cleanup functions.
      */
@@ -814,12 +815,11 @@ export function UltraActivity({
     update();
 
     onMount.forEach(fn => {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
             try {
-                const cleanup = fn(element);
-                if (cleanup) {
-                    cleanupFunctions.push(cleanup);
-                }
+                const result = fn(element);
+                const cleanup = result instanceof Promise ? await result : result;
+                if (cleanup) cleanupFunctions.push(cleanup);
             } catch (error) {
                 console.error('Error while executing onMount function(s):', error);
             }
