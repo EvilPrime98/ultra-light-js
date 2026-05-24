@@ -7,7 +7,8 @@ import {
     ultraCompState,
     ultraStyles,
     ultraQuery,
-    ultraNavigate
+    ultraNavigate,
+    ultraStyles2
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -786,6 +787,91 @@ describe('hooks', () => {
 
         it('should not include the original unscoped class name in the injected CSS', () => {
             const styles = ultraStyles('.original { color: orange; }', document);
+            const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;
+            const hashedClass = styles['original'];
+            expect(styleEl.textContent).toContain(`.${hashedClass}`);
+            expect(styleEl.textContent).not.toMatch(/\.original\b(?!_)/);
+        });
+
+    }, time_out);
+
+    suite('ultraStyles2', () => {
+
+        it('should return an empty object for invalid input', () => {
+            // @ts-expect-error: testing invalid input
+            expect(ultraStyles2(null, document)).toEqual({});
+            // @ts-expect-error: testing invalid input
+            expect(ultraStyles2(123, document)).toEqual({});
+            // @ts-expect-error: testing invalid input
+            expect(ultraStyles2('', document)).toEqual({});
+        });
+
+        it('should return a map of class names to hashed class names', () => {
+            const styles = ultraStyles2({
+                'foo': { color: 'red'}
+            }, document);
+            expect(styles).toHaveProperty('foo');
+            expect(styles['foo']).toMatch(/^foo_[a-z0-9]+$/);
+        });
+
+        it('should extract all class names from the CSS Object', () => {
+            const styles = ultraStyles2({
+                container: { display: 'flex' },
+                title: { fontSize: '1rem' },
+                subtitle: { color: 'gray' }
+            }, document);
+            expect(styles).toHaveProperty('container');
+            expect(styles).toHaveProperty('title');
+            expect(styles).toHaveProperty('subtitle');
+        });
+
+        it('all hashed class names should share the same hash suffix', () => {
+            const styles = ultraStyles2({
+                card: { padding: '1rem' },
+                'card-body': { margin: '0' }
+            }, document);
+            const hashes = Object.values(styles).map(v => v.split('_').pop());
+            const uniqueHashes = new Set(hashes);
+            expect(uniqueHashes.size).toBe(1);
+        });
+
+        it('should return the same map for the same CSS string (cache hit)', () => {
+            const css = { cached: { background: 'blue'} };
+            const first = ultraStyles2(css, document);
+            const second = ultraStyles2(css, document);
+            expect(first).toBe(second);
+        });
+
+        it('should return different hashed names for different CSS strings', () => {
+            const stylesA = ultraStyles2({ box: { color: 'red' } }, document);
+            const stylesB = ultraStyles2({ box: { color: 'blue' } }, document);;
+            expect(stylesA['box']).not.toBe(stylesB['box']);
+        });
+
+        it('should inject a <style> element with id "ultra-styles" into the document', () => {
+            ultraStyles2({ injected: { color: 'green' } }, document);
+            const styleEl = document.getElementById('ultra-styles');
+            expect(styleEl).not.toBeNull();
+            expect(styleEl?.tagName.toLowerCase()).toBe('style');
+        });
+
+        it('should write the scoped CSS into the style element', () => {
+            const styles = ultraStyles2({ scoped: { color: 'purple' } }, document);
+            const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;
+            expect(styleEl.textContent).toContain(styles['scoped']);
+        });
+
+        it('should not duplicate styles for the same CSS string', () => {
+            const css = { nodupe2: { color: 'pink' } };
+            ultraStyles2(css, document);
+            ultraStyles2(css, document);
+            const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;
+            const count = (styleEl.textContent?.match(/\.nodupe2_/g) ?? []).length;
+            expect(count).toBe(1);
+        });
+
+        it('should not include the original unscoped class name in the injected CSS', () => {
+            const styles = ultraStyles2({ original: { color: 'orange' } }, document);
             const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;
             const hashedClass = styles['original'];
             expect(styleEl.textContent).toContain(`.${hashedClass}`);

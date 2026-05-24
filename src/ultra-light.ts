@@ -12,8 +12,11 @@ import {
     type UltraRenderableElement,
     type UltraCompStateResult,
     type IUltraCompStateStateful,
-    type AllHTMLAttributes
+    type AllHTMLAttributes,
+    CSSProperties
 } from './types';
+
+import type { Properties } from 'csstype';
 
 export type {
     UltraStateReturn,
@@ -1076,5 +1079,65 @@ export function ultraPortal(
     }
 
     $app.after($portalElement);
+
+}
+
+function isValidCssObject(
+    value: any
+) {
+    return (
+        value !== null &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        Object.getPrototypeOf(value) === Object.prototype &&
+        Object.keys(value).length > 0
+    );
+}
+
+export function ultraStyles2(
+    cssObject: Record<string, CSSProperties>,
+    document: Document = window.document
+): Record<string, string> {
+
+    if (!isValidCssObject(cssObject)) {
+        console.warn('ultraStyles2: invalid cssObject');
+        return {};
+    }
+
+    let $styleEl = document.getElementById('ultra-styles') as HTMLStyleElement | null;
+    if (!$styleEl) {
+        $styleEl = document.createElement('style');
+        $styleEl.id = 'ultra-styles';
+        document.head.appendChild($styleEl);
+    }
+
+    const returnable: Record<string, string> = {};
+    const hash = stableHash(JSON.stringify(cssObject));
+
+    if (styleCache.has(hash)) {
+        return styleCache.get(hash)!;
+    }
+
+    let cssString = '';
+
+    for (const selector of Object.keys(cssObject)) {
+        const className = `${selector}_${hash}`;
+        returnable[selector] = className;
+        cssString += `.${className}{`;
+        const styles = cssObject[selector];
+        for (const prop in styles) {
+            const value = styles[prop as keyof CSSProperties];
+            if (value === undefined || value === null) continue;
+            const kebabProp = prop.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
+            cssString += `${kebabProp}:${String(value)};`;
+        }
+        cssString += `}\n`;
+    }
+
+    $styleEl.appendChild(document.createTextNode(cssString));
+
+    styleCache.set(hash, returnable);
+
+    return returnable;
 
 }

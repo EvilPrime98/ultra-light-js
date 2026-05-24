@@ -1,3 +1,5 @@
+import { Properties } from "csstype";
+
 export interface StateSubscriber<T> {
     getValue: () => T;
     setValue: (newValue: T) => void;
@@ -91,3 +93,5 @@ type AnyKey<T> = T extends any ? keyof T : never;
 export type AllHTMLAttributes = {
   [K in AnyKey<HTMLElementUnion>]?: unknown;
 };
+
+export type CSSProperties = Properties<string | number>;
