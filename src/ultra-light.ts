@@ -1094,14 +1094,14 @@ function isValidCssObject(
     );
 }
 
-export function ultraStyles2(
-    cssObject: Record<string, CSSProperties>,
+export function ultraStyles2<T extends Record<string, CSSProperties>>(
+    cssObject: T,
     document: Document = window.document
-): Record<string, string> {
+): Record<keyof T, string> {
 
     if (!isValidCssObject(cssObject)) {
         console.warn('ultraStyles2: invalid cssObject');
-        return {};
+        return {} as Record<keyof T, string>;
     }
 
     let $styleEl = document.getElementById('ultra-styles') as HTMLStyleElement | null;
@@ -1115,7 +1115,7 @@ export function ultraStyles2(
     const hash = stableHash(JSON.stringify(cssObject));
 
     if (styleCache.has(hash)) {
-        return styleCache.get(hash)!;
+        return styleCache.get(hash)! as Record<keyof T, string>;
     }
 
     let cssString = '';
@@ -1138,6 +1138,6 @@ export function ultraStyles2(
 
     styleCache.set(hash, returnable);
 
-    return returnable;
+    return returnable as Record<keyof T, string>;
 
 }
