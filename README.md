@@ -1,5 +1,8 @@
 # Ultra Light Framework
 
+[![CI](https://github.com/EvilPrime98/ultra-light-js/actions/workflows/ci.yml/badge.svg)](https://github.com/EvilPrime98/ultra-light-js/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/ultra-light.js.svg)](https://www.npmjs.com/package/ultra-light.js)
+
 An ultra-lightweight and reactive mini framework for modern web development, with zero dependencies.
 
 ## Features
@@ -13,9 +16,17 @@ An ultra-lightweight and reactive mini framework for modern web development, wit
 - **Ultra lightweight** - Less than 5KB minified
 - **TypeScript** - Fully typed
 
+## Installation
+
+```bash
+npm install ultra-light.js
+# or
+pnpm add ultra-light.js
+```
+
 ## Quick Start
 ```javascript
-import { ultraState, UltraComponent } from 'ultra-light-js';
+import { ultraState, UltraComponent } from 'ultra-light.js';
 
 function Counter(){
 
@@ -154,6 +165,20 @@ const Component = `<div class="${styles.container}">
 </div>`;
 ```
 
+### ultraStyles2(cssObject, document?)
+
+Like `ultraStyles`, but takes a CSS-in-JS object (camelCase properties) instead of a CSS string. Returns a map of original keys to hashed class names.
+```javascript
+const styles = ultraStyles2({
+  container: { display: 'flex' },
+  title: { fontSize: '1rem', color: 'blue' }
+});
+
+const Component = `<div class="${styles.container}">
+  <h1 class="${styles.title}">Title</h1>
+</div>`;
+```
+
 ### ultraQueryParams()
 
 Gets URL search parameters as a plain object.
@@ -163,11 +188,27 @@ const params = ultraQueryParams();
 console.log(params); // { name: 'John', age: '30' }
 ```
 
+### ultraQuery()
+
+Creates a fetcher with built-in caching, request de-duplication, and stale-time invalidation.
+```javascript
+const { fetch, isFetching, hasError, cache, invalidateCache, subscribeToCache } = ultraQuery();
+
+const result = await fetch('user-1', () => window.fetch(`/api/users/1`).then(r => r.json()), 60 * 1000);
+// result.data, result.isFetching(), result.hasError()
+
+// Concurrent calls with the same key are de-duplicated, and results are cached
+// until manually invalidated or the staleTime (ms, default 5 minutes) elapses.
+invalidateCache('user-1');
+
+subscribeToCache(() => console.log('cache changed:', cache()));
+```
+
 ### UltraRouter(...routes)
 
 Creates a router for SPA navigation.
 ```javascript
-import { UltraRouter, UltraLink } from 'ultra-light-js';
+import { UltraRouter, UltraLink } from 'ultra-light.js';
 
 const Home = () => '<div><h1>Home</h1></div>';
 const About = () => '<div><h1>About</h1></div>';
@@ -191,6 +232,17 @@ const link = UltraLink({
   href: '/about',
   child: '<span>Go to About</span>'
 });
+```
+
+### ultraNavigate({ href, viewTransition? })
+
+Navigates programmatically within a `UltraRouter` context (pushes history state, scrolls to top, dispatches `popstate`). Use this when you need to navigate outside of a click handler, e.g. `UltraLink` uses it internally.
+```javascript
+ultraNavigate({ href: '/dashboard' });
+
+// Use the View Transition API when available, falling back to a direct
+// navigation otherwise.
+ultraNavigate({ href: '/dashboard', viewTransition: true });
 ```
 
 ### UltraComponent(props)
@@ -269,11 +321,19 @@ const fragment = UltraFragment(
 );
 ```
 
+### ultraPortal(app, portal)
+
+Inserts a component directly after a given application root element, outside of the normal component tree. Useful for modals, tooltips, or anything that needs to escape a parent's `overflow`/`z-index` stacking context. Throws if the app element or the portal content can't be resolved.
+```javascript
+// app: a CSS selector or an HTMLElement identifying the mount point
+ultraPortal('#app', '<div class="modal">Hello from a portal</div>');
+```
+
 ## Examples
 
 ### Complete Todo App
 ```javascript
-import { ultraState, UltraComponent, ultraStyles } from 'ultra-light-js';
+import { ultraState, UltraComponent, ultraStyles } from 'ultra-light.js';
 
 const styles = ultraStyles(`
 
