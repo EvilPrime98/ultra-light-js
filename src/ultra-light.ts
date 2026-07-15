@@ -16,8 +16,6 @@ import {
     CSSProperties
 } from './types';
 
-import type { Properties } from 'csstype';
-
 export type {
     UltraStateReturn,
     UltraContextReturn,
@@ -82,7 +80,7 @@ function stableHash(str: string): string {
 
 function deepFreeze<T>(obj: T): T {
     if (typeof obj !== 'object' || obj === null) return obj;
-    Object.keys(obj).forEach(key => deepFreeze((obj as any)[key]));
+    Object.keys(obj).forEach(key => deepFreeze((obj as Record<string, unknown>)[key]));
     return Object.freeze(obj);
 }
 
@@ -540,7 +538,7 @@ export function UltraComponent({
 
     Object.keys(styles).forEach(key => {
         try {
-            (node as HTMLElement).style[key as any] = styles[key as keyof CSSStyleDeclaration] as string;
+            ((node as HTMLElement).style as unknown as Record<string, string>)[key] = styles[key as keyof CSSStyleDeclaration] as string;
         } catch (error) {
             console.error(`Error al aplicar estilo ${key}:`, error);
         }
@@ -582,14 +580,16 @@ export function UltraComponent({
     //add onMount functions
 
     onMount.forEach(fn => {
-        requestAnimationFrame(async () => {
-            try {
-                const result = fn(node);
-                const cleanup = result instanceof Promise ? await result : result;
-                if (cleanup) cleanupFunctions.push(cleanup);
-            } catch (error) {
-                console.error('Error while executing onMount function(s):', error);
-            }
+        requestAnimationFrame(() => {
+            void (async () => {
+                try {
+                    const result = fn(node);
+                    const cleanup = result instanceof Promise ? await result : result;
+                    if (cleanup) cleanupFunctions.push(cleanup);
+                } catch (error) {
+                    console.error('Error while executing onMount function(s):', error);
+                }
+            })();
         });
     });
 
@@ -752,7 +752,7 @@ export function UltraActivity({
 
     Object.keys(styles).forEach(key => {
         try {
-            (element as HTMLElement).style[key as any] = styles[key as keyof CSSStyleDeclaration] as string;
+            ((element as HTMLElement).style as unknown as Record<string, string>)[key] = styles[key as keyof CSSStyleDeclaration] as string;
         } catch (error) {
             console.error(`Error while applying style ${key}:`, error);
         }
@@ -815,14 +815,16 @@ export function UltraActivity({
     update();
 
     onMount.forEach(fn => {
-        requestAnimationFrame(async () => {
-            try {
-                const result = fn(element);
-                const cleanup = result instanceof Promise ? await result : result;
-                if (cleanup) cleanupFunctions.push(cleanup);
-            } catch (error) {
-                console.error('Error while executing onMount function(s):', error);
-            }
+        requestAnimationFrame(() => {
+            void (async () => {
+                try {
+                    const result = fn(element);
+                    const cleanup = result instanceof Promise ? await result : result;
+                    if (cleanup) cleanupFunctions.push(cleanup);
+                } catch (error) {
+                    console.error('Error while executing onMount function(s):', error);
+                }
+            })();
         });
     });
     
@@ -942,46 +944,46 @@ export function ultraCompState<T extends Record<string, unknown>>(
     if (typeof initialComp !== 'object' || initialComp === null) {
         throw new Error('ultraCompState: initial value cannot be a primitive or null.');
     }
-    const comp = {} as UltraCompStateResult<T>;
+    const comp: Record<string, unknown> = {};
     (Object.keys(initialComp) as (keyof T)[]).forEach(key => {
         if (typeof initialComp[key] === 'function') {
-            (comp as any)[key] = (...args: any[]) => {
-                return (initialComp[key] as Function)(comp, ...args);
-            }
+            const fn = initialComp[key] as (...args: unknown[]) => unknown;
+            comp[key as string] = (...args: unknown[]) => fn(comp, ...args);
             return;
         }
         const [getValue, setValue, subscribeToValue] = ultraState(initialComp[key], freeze);
-        (comp as any)[key] = {
+        comp[key as string] = {
             get: getValue,
             set: setValue,
             subscribe: subscribeToValue,
         };
     });
-    return comp;
+    return comp as UltraCompStateResult<T>;
 }
 
 export function ultraQuery() {
 
-    const [cache, setCache, subscribeToCache] = ultraState<Record<string, any>>({});
+    const [cache, setCache, subscribeToCache] = ultraState<Record<string, unknown>>({});
     const [isFetching, setIsFetching, subscribeToFetching] = ultraState<boolean>(false);
     const [hasError, setHasError, subscribeToHasError] = ultraState<boolean>(false);
-    const [error, setError, subscribeToError] = ultraState<unknown|null>(null);
+    const [error, setError, subscribeToError] = ultraState<unknown>(null);
 
     const timerMap = new Map<string, ReturnType<typeof setTimeout>>();
     const pendingMap = new Map<string, Promise<void>>();
 
     const invalidateCache = (key: string) => {
-        const { [key]: _, ...newCache } = cache();
+        const newCache = { ...cache() };
+        delete newCache[key];
         setCache(newCache);
         if (timerMap.has(key)) {
-            clearTimeout(timerMap.get(key)!);
+            clearTimeout(timerMap.get(key));
             timerMap.delete(key);
         }
     };
 
-    const addCache = (key: string, value: any, staleTime: number) => {
+    const addCache = (key: string, value: unknown, staleTime: number) => {
         if (timerMap.has(key)) {
-            clearTimeout(timerMap.get(key)!);
+            clearTimeout(timerMap.get(key));
         }
         setCache({ ...cache(), [key]: value });
         const timer = setTimeout(() => {
@@ -992,10 +994,9 @@ export function ultraQuery() {
 
     const fetch = async (
         key: string,
-        fetcher: () => Promise<any>,
+        fetcher: () => Promise<unknown>,
         staleTime: number = 5 * 60 * 1000
     ) => {
-        //@ts-expect-error: hasOwn does exist
         if (Object.hasOwn(cache(), key)) {
             return {
                 hasError,
@@ -1083,7 +1084,7 @@ export function ultraPortal(
 }
 
 function isValidCssObject(
-    value: any
+    value: unknown
 ) {
     return (
         value !== null &&

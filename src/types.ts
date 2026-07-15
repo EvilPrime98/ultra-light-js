@@ -38,7 +38,7 @@ export interface UltraLightElement extends HTMLElement {
 }
 
 export interface UltraTrigger<T = HTMLElement> {
-    subscriber: ((fn: (value: any) => void) => () => void) | ((fn: (value: any) => void) => () => void)[];
+    subscriber: ((fn: (value: unknown) => void) => () => void) | ((fn: (value: unknown) => void) => () => void)[];
     triggerFunction: (node: T) => void;
     /**
      * When true, the trigger callback is deferred to the next animation frame.
@@ -66,7 +66,7 @@ export interface IUltraCompStateStateful<T> {
 }
 
 export type UltraCompStateResult<T extends Record<string, unknown>> = {
-    [K in keyof T]: T[K] extends (comp: any, ...args: infer Args) => infer R
+    [K in keyof T]: T[K] extends (comp: never, ...args: infer Args) => infer R
         ? (...args: Args) => R
         : IUltraCompStateStateful<T[K]>;
 };
@@ -88,7 +88,7 @@ type HTMLElementUnion =
 | HTMLLinkElement
 | HTMLScriptElement;
 
-type AnyKey<T> = T extends any ? keyof T : never;
+type AnyKey<T> = T extends unknown ? keyof T : never;
 
 export type AllHTMLAttributes = {
   [K in AnyKey<HTMLElementUnion>]?: unknown;

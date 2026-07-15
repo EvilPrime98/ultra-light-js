@@ -502,7 +502,7 @@ describe('Components', () => {
         });
 
         it('should set display:none on all DocumentFragment children when initial mode state is false', () => {
-            const [getVisible, setVisible, subscribe] = ultraState(false);
+            const [getVisible, , subscribe] = ultraState(false);
             const $fragment = document.createDocumentFragment();
             const $div1 = document.createElement('div');
             const $div2 = document.createElement('div');
@@ -633,7 +633,7 @@ describe('Components', () => {
             const router = UltraRouter({
                 path: '/', component: () => '<p>Home</p>'
             });
-            //@ts-expect-error
+            //@ts-expect-error: happy-dom body type differs from lib.dom types
             happyWindow.document.body.appendChild(router);
             expect(router.innerHTML).toBe('<p>Home</p>');
         });
@@ -741,7 +741,7 @@ describe('Components', () => {
             const $prev = document.createElement('p') as unknown as UltraLightElement;
             $prev._cleanup = () => { prevCleanupCalled = true; };
 
-            const router = UltraRouter(
+            UltraRouter(
                 { path: '/', component: () => $prev as unknown as HTMLElement },
                 { path: '/next', component: () => '<p>Next</p>' }
             );
@@ -838,7 +838,7 @@ describe('Components', () => {
             const link = UltraLink({ href: '/ctrl-blocked', children: [] });
             const popstateSpy = vi.fn();
             window.addEventListener('popstate', popstateSpy);
-            // @ts-expect-error
+            // @ts-expect-error: happy-dom MouseEvent differs from lib.dom types
             link.dispatchEvent(new window.MouseEvent('click', { bubbles: true, ctrlKey: true }));
             expect(popstateSpy).not.toHaveBeenCalled();
             window.removeEventListener('popstate', popstateSpy);
@@ -849,7 +849,7 @@ describe('Components', () => {
             const link = UltraLink({ href: '/meta-blocked', children: [] });
             const popstateSpy = vi.fn();
             window.addEventListener('popstate', popstateSpy);
-            // @ts-expect-error
+            // @ts-expect-error: happy-dom MouseEvent differs from lib.dom types
             link.dispatchEvent(new window.MouseEvent('click', { bubbles: true, metaKey: true }));
             expect(popstateSpy).not.toHaveBeenCalled();
             window.removeEventListener('popstate', popstateSpy);
@@ -882,7 +882,7 @@ describe('Components', () => {
         it('should navigate without transition when viewTransition is true but API is unavailable', () => {
             happyWindow.history.pushState({}, '', '/vt-fallback-start');
             // Ensure the API is absent
-            // @ts-expect-error
+            // @ts-expect-error: startViewTransition is not optional in lib.dom types
             delete document.startViewTransition;
             const popstateSpy = vi.fn();
             window.addEventListener('popstate', popstateSpy);
@@ -903,7 +903,7 @@ describe('Components', () => {
             const link = UltraLink({ href: '/no-vt-dest', children: [], viewTransition: false });
             link.click();
             expect(transitionSpy).not.toHaveBeenCalled();
-            // @ts-expect-error
+            // @ts-expect-error: startViewTransition is not optional in lib.dom types
             delete document.startViewTransition;
         });
 
@@ -935,7 +935,7 @@ describe('Components', () => {
             const $app = document.createElement('div');
             $app.id = 'app';
             document.body.appendChild($app);
-            // @ts-expect-error
+            // @ts-expect-error: happy-dom element type differs from lib.dom HTMLElement
             ultraPortal($app, '<h1>Portal</h1>');
             expect($app.nextElementSibling?.tagName).toBe('H1');
         });

@@ -433,16 +433,13 @@ describe('hooks', () => {
         });
 
         it('subscribe() should notify when the value changes', () => {
-            ['a', 'b', 'c'].forEach((key) => {
+            (['a', 'b', 'c'] as const).forEach((key) => {
                 let detected = false;
-                //@ts-expect-error
                 foo[key].subscribe(() => {
                     detected = true;
                 });
-                //@ts-expect-error
                 foo[key].set(1);
                 expect(detected).toBe(true);
-                //@ts-expect-error
                 foo[key].set(0);
                 expect(detected).toBe(true);
             });
@@ -495,9 +492,9 @@ describe('hooks', () => {
         it('fetch() should set isFetching to true during the request and false after', async () => {
             const { fetch, isFetching } = ultraQuery();
             let fetchingDuringRequest = false;
-            const fetcher = vi.fn().mockImplementation(async () => {
+            const fetcher = vi.fn().mockImplementation(() => {
                 fetchingDuringRequest = isFetching();
-                return { id: 3 };
+                return Promise.resolve({ id: 3 });
             });
             await fetch('key', fetcher);
             expect(fetchingDuringRequest).toBe(true);
@@ -549,7 +546,7 @@ describe('hooks', () => {
 
         it('fetch() should deduplicate concurrent in-flight requests for the same key', async () => {
             const { fetch } = ultraQuery();
-            let resolve: (v: any) => void;
+            let resolve: (v: unknown) => void;
             const fetcher = vi.fn().mockImplementation(
                 () => new Promise(r => { resolve = r; })
             );
@@ -688,13 +685,13 @@ describe('hooks', () => {
             ultraNavigate({ href: '/vt-dest', viewTransition: true });
             expect(transitionSpy).toHaveBeenCalledTimes(1);
             expect(happyWindow.location.pathname).toBe('/vt-dest');
-            // @ts-expect-error
+            // @ts-expect-error: startViewTransition is not optional in lib.dom types
             delete happyWindow.document.startViewTransition;
         });
 
         it('should fall back to direct navigation when viewTransition is true but API is unavailable', () => {
             happyWindow.history.pushState({}, '', '/vt-fallback-start');
-            // @ts-expect-error
+            // @ts-expect-error: startViewTransition is not optional in lib.dom types
             delete happyWindow.document.startViewTransition;
             const popstateSpy = vi.fn();
             happyWindow.addEventListener('popstate', popstateSpy);
