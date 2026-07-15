@@ -8,7 +8,8 @@ import {
     ultraStyles,
     ultraQuery,
     ultraNavigate,
-    ultraStyles2
+    ultraStyles2,
+    ultraQueryParams
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -713,6 +714,45 @@ describe('hooks', () => {
             );
             errorSpy.mockRestore();
             pushStateSpy.mockRestore();
+        });
+
+    }, time_out);
+
+    // [agent-added]
+    suite('ultraQueryParams', () => {
+
+        const happyWindow = new Window({ url: 'about:/' });
+
+        beforeAll(() => {
+            Object.assign(globalThis, {
+                window: happyWindow,
+                document: happyWindow.document,
+            });
+        });
+
+        it('should return an empty object when there is no query string', () => {
+            happyWindow.history.pushState({}, '', '/no-query');
+            expect(ultraQueryParams()).toEqual({});
+        });
+
+        it('should return a single key/value pair', () => {
+            happyWindow.history.pushState({}, '', '/path?foo=bar');
+            expect(ultraQueryParams()).toEqual({ foo: 'bar' });
+        });
+
+        it('should return multiple key/value pairs', () => {
+            happyWindow.history.pushState({}, '', '/path?a=1&b=2&c=3');
+            expect(ultraQueryParams()).toEqual({ a: '1', b: '2', c: '3' });
+        });
+
+        it('should decode URL-encoded values', () => {
+            happyWindow.history.pushState({}, '', '/path?q=hello%20world&sym=%26%3D');
+            expect(ultraQueryParams()).toEqual({ q: 'hello world', sym: '&=' });
+        });
+
+        it('should return the last value for a repeated key', () => {
+            happyWindow.history.pushState({}, '', '/path?dup=first&dup=second');
+            expect(ultraQueryParams()).toEqual({ dup: 'second' });
         });
 
     }, time_out);

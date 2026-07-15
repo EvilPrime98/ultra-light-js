@@ -8,7 +8,8 @@ import {
     type UltraLightElement,
     UltraRouter,
     UltraLink,
-    ultraPortal
+    ultraPortal,
+    UltraFragment
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -122,6 +123,48 @@ describe('Components', () => {
                 document as unknown as Document
             );
             expect($result).toBeInstanceOf(window.HTMLDivElement);
+        });
+
+    }, time_out);
+
+    // [agent-added]
+    suite('UltraFragment', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { window: happyWindow, document: happyWindow.document });
+        });
+
+        it('should return a DocumentFragment', () => {
+            const result = UltraFragment('<div></div>');
+            expect(result).toBeInstanceOf(window.DocumentFragment);
+        });
+
+        it('should return an empty fragment when called with no children', () => {
+            const result = UltraFragment();
+            expect(result.childNodes.length).toBe(0);
+        });
+
+        it('should append a string child as a parsed element', () => {
+            const result = UltraFragment('<span>hello</span>');
+            expect(result.childNodes.length).toBe(1);
+            expect((result.firstChild as HTMLElement).tagName).toBe('SPAN');
+        });
+
+        it('should append a pre-built HTMLElement child directly', () => {
+            const el = document.createElement('p');
+            const result = UltraFragment(el as unknown as HTMLElement);
+            expect(result.firstChild).toBe(el);
+        });
+
+        it('should skip null children', () => {
+            const result = UltraFragment('<div></div>', null, '<span></span>');
+            expect(result.childNodes.length).toBe(2);
+        });
+
+        it('should preserve the order of multiple children', () => {
+            const result = UltraFragment('<div id="first"></div>', '<div id="second"></div>');
+            expect((result.childNodes[0] as HTMLElement).id).toBe('first');
+            expect((result.childNodes[1] as HTMLElement).id).toBe('second');
         });
 
     }, time_out);
