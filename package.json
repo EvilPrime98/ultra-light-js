@@ -3,7 +3,13 @@
   "version": "1.0.17",
   "description": "A lightweight JavaScript framework for building reactive, state-management, and SPA applications.",
   "type": "module",
+  "main": "./dist/ultra-light.js",
   "types": "dist/ultra-light.d.ts",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@11.5.0",
   "exports": {
     ".": {
       "types": "./dist/ultra-light.d.ts",
@@ -14,13 +20,21 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite ./test",
     "build": "tsc",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run build",
+    "prepare": "pnpm run build",
+    "prepublishOnly": "pnpm run build",
+    "lint": "eslint .",
+    "test": "vitest run",
     "test:hooks": "vitest watch --disableConsoleIntercept ./src/tests/hooks.spec.ts",
-    "test:components": "vitest watch --disableConsoleIntercept ./src/tests/components.spec.ts"
+    "test:components": "vitest watch --disableConsoleIntercept ./src/tests/components.spec.ts",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
   },
   "keywords": [
     "framework",
@@ -45,18 +59,19 @@
   },
   "homepage": "https://github.com/EvilPrime98/ultra-light-js#readme",
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "4.0.18",
     "eslint": "^10.0.2",
     "globals": "^17.3.0",
     "happy-dom": "^20.8.3",
+    "linkedom": "^0.18.12",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.56.1",
     "vite": "^7.2.4",
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "csstype": "^3.2.3",
-    "linkedom": "^0.18.12"
+    "csstype": "^3.2.3"
   }
 }
