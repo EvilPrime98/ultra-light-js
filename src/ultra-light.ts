@@ -84,8 +84,47 @@ function deepFreeze<T>(obj: T): T {
     return Object.freeze(obj);
 }
 
+let activeScope: UltraCleanupFunction[] | null = null;
+
+function registerInScope(unsub: UltraCleanupFunction): void {
+    if (activeScope) activeScope.push(unsub);
+}
+
+/**
+ * Runs `fn` inside an implicit owner scope: any `ultraState`/`ultraCompState` subscription
+ * made synchronously during `fn`'s execution is auto-registered for disposal, so callers don't
+ * need to manually collect and thread unsubscribe functions through a `cleanup` array.
+ *
+ * Only subscriptions made synchronously within `fn` are captured — anything subscribed after an
+ * `await`, inside an event handler, or in a `setTimeout` runs with no active scope and still
+ * needs explicit `cleanup`/`trigger` wiring.
+ *
+ * @param fn Function to run inside the scope. Its return value is passed through unchanged.
+ * @returns A tuple of `fn`'s result and a disposer that unsubscribes everything registered during `fn`.
+ */
+export function ultraScope<T>(fn: () => T): [T, UltraCleanupFunction] {
+    const prev = activeScope;
+    const scope: UltraCleanupFunction[] = [];
+    activeScope = scope;
+    try {
+        const result = fn();
+        return [result, () => scope.forEach(unsub => {
+            try {
+                unsub();
+            } catch (error) {
+                console.error('Error while disposing ultraScope:', error);
+            }
+        })];
+    } finally {
+        activeScope = prev;
+    }
+}
+
 /**
  * Returns a stateful getter, setter, and subscriber function for a given initial value.
+ *
+ * `subscribe` auto-registers its returned unsubscribe function with the active {@link ultraScope},
+ * if any, so callers constructing state inside a scope don't need to manually collect and dispose it.
  * @param initialValue
  * @param freeze Optional parameter to freeze the state object. Default is false.
  * @returns
@@ -120,7 +159,9 @@ export function ultraState<T>(initialValue: T, freeze = false): [
 
     const subscribe = (fn: (value: T) => void): (() => void) => {
         subscribers.add(fn);
-        return () => subscribers.delete(fn);
+        const unsubscribe = (): void => { subscribers.delete(fn); };
+        registerInScope(unsubscribe);
+        return unsubscribe;
     };
 
     return [
@@ -242,9 +283,35 @@ function matchRoute(routePath: string, currentPath: string): UltraRouteMatch {
 
 /**
  * This functional component is used to create an SPA router.
- * @param routes 
- * @returns 
+ *
+ * Each matched route's `component` function runs inside its own {@link ultraScope}, so any
+ * `ultraState`/`ultraCompState` subscription made synchronously during construction is
+ * automatically disposed on navigation away or when the router's `_cleanup` runs.
+ * @param routes
+ * @returns
  */
+
+/**
+ * @internal
+ * Factored out of `renderRoute` deliberately: inlining this as an `if (targetComponent) {...}
+ * else { wildcardDispose?.() }` directly in `renderRoute` trips a TypeScript control-flow-narrowing
+ * false positive (`TS2349: Type 'never' has no call signatures`) on the two nullable disposer
+ * variables once they're assigned inside the preceding `routes.forEach` closure. Passing them
+ * through a function boundary resets the (incorrect) narrowing.
+ */
+function reconcileRouteScope(
+    hasTargetComponent: boolean,
+    wildcardComponent: HTMLElement | Node | null,
+    targetDispose: UltraCleanupFunction | null,
+    wildcardDispose: UltraCleanupFunction | null
+): UltraCleanupFunction | null {
+    if (!hasTargetComponent && wildcardComponent) {
+        return wildcardDispose;
+    }
+    wildcardDispose?.();
+    return targetDispose;
+}
+
 export function UltraRouter(
     ...routes: UltraRoute[]
 ): UltraLightDiv {
@@ -276,20 +343,27 @@ export function UltraRouter(
         let targetComponent: HTMLElement | Node | null = null;
         let routeParams: Record<string, string> = {};
         let wildcardComponent: HTMLElement | Node | null = null;
+        let targetDispose: UltraCleanupFunction | null = null;
+        let wildcardDispose: UltraCleanupFunction | null = null;
 
         routes.forEach(route => {
             const match = matchRoute(route.path, currentPath);
 
             if (match.matched && !match.isWildcard && !targetComponent) {
                 routeParams = match.params;
-                const component = route.component(routeParams);
+                const [component, dispose] = ultraScope(() => route.component(routeParams));
                 targetComponent = parseHTMLString(component);
+                targetDispose = dispose;
             } else if (match.matched && match.isWildcard) {
-                const component = route.component();
+                const [component, dispose] = ultraScope(() => route.component());
                 wildcardComponent = parseHTMLString(component);
+                wildcardDispose = dispose;
             }
         });
 
+        // Each branch runs in its own scope; discard whichever one isn't kept immediately
+        // instead of leaking its subscriptions until the next navigation.
+        const scopeDispose = reconcileRouteScope(!!targetComponent, wildcardComponent, targetDispose, wildcardDispose);
         if (!targetComponent && wildcardComponent) {
             targetComponent = wildcardComponent;
         }
@@ -298,10 +372,15 @@ export function UltraRouter(
 
         if (targetComponent) {
             container.appendChild(targetComponent);
+        }
 
-            if ((targetComponent as UltraLightElement)._cleanup) {
-                currentCleanup = (targetComponent as UltraLightElement)._cleanup!;
-            }
+        const nodeCleanup = (targetComponent as UltraLightElement | null)?._cleanup;
+
+        if (nodeCleanup || scopeDispose) {
+            currentCleanup = () => {
+                nodeCleanup?.();
+                scopeDispose?.();
+            };
         }
     };
 

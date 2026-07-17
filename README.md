@@ -95,6 +95,25 @@ const unsubscribe = subscribe((newValue) => {
 unsubscribe();
 ```
 
+### ultraScope(fn)
+
+Runs `fn` inside an implicit owner scope: any `ultraState`/`ultraCompState` subscription made synchronously during `fn`'s execution is auto-registered for disposal, so you don't have to manually collect and thread unsubscribe functions through a `cleanup` array. `UltraRouter` uses this internally to dispose route-scoped subscriptions on navigation, but it's also exported for apps that mount components outside the router and want the same guarantee.
+
+```javascript
+const [items, setItems, subscribeItems] = ultraState([]);
+
+const [result, disposeScope] = ultraScope(() => {
+  // any subscription made synchronously here is auto-registered
+  subscribeItems((value) => console.log('items changed:', value));
+  return 'some result';
+});
+
+// later, tear down every subscription made inside the scope at once
+disposeScope();
+```
+
+Only subscriptions made **synchronously** inside `fn` are captured — anything subscribed after an `await`, inside an event handler, or in a `setTimeout` runs with no active scope and still needs explicit `cleanup`/`trigger` wiring.
+
 ### ultraCompState(initialComp)
 
 Creates a composite stateful object. Each key becomes a reactive state with `get`, `set`, and `subscribe`. Functions receive the composite state object as the first argument, allowing methods to access other state values.
@@ -223,6 +242,8 @@ const router = UltraRouter(
 
 document.body.appendChild(router);
 ```
+
+Each route's `component` function is run inside its own [`ultraScope`](#ultrascopefn), so any `ultraState`/`ultraCompState` subscription made synchronously inside it is automatically disposed on navigation or when the router is cleaned up — no need to manually collect and pass those subscriptions into a `cleanup` array.
 
 ### UltraLink({ href, child })
 

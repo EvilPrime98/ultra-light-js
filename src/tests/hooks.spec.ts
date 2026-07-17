@@ -9,7 +9,8 @@ import {
     ultraQuery,
     ultraNavigate,
     ultraStyles2,
-    ultraQueryParams
+    ultraQueryParams,
+    ultraScope
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -55,6 +56,105 @@ describe('hooks', () => {
             });
             set(get());
             expect(detected).toBe(false);
+        });
+
+    }, time_out);
+
+    suite('ultraScope', () => {
+
+        it('should return the wrapped function\'s result unchanged', () => {
+            const [result] = ultraScope(() => 42);
+            expect(result).toBe(42);
+        });
+
+        it('should return a disposer function', () => {
+            const [, dispose] = ultraScope(() => 0);
+            expect(dispose).toBeInstanceOf(Function);
+        });
+
+        it('should auto-register ultraState subscriptions made synchronously inside the scope', () => {
+            const [get, set, subscribe] = ultraState(0);
+            let notified = false;
+
+            const [, dispose] = ultraScope(() => {
+                subscribe(() => { notified = true; });
+            });
+
+            dispose();
+            set(get() + 1);
+            expect(notified).toBe(false);
+        });
+
+        it('should auto-register ultraCompState subscriptions made synchronously inside the scope', () => {
+            const comp = ultraCompState({ count: 0 });
+            let notified = false;
+
+            const [, dispose] = ultraScope(() => {
+                comp.count.subscribe(() => { notified = true; });
+            });
+
+            dispose();
+            comp.count.set(comp.count.get() + 1);
+            expect(notified).toBe(false);
+        });
+
+        it('should NOT capture subscriptions made outside of any scope', () => {
+            const [get, set, subscribe] = ultraState(0);
+            let notified = false;
+
+            subscribe(() => { notified = true; });
+
+            set(get() + 1);
+            expect(notified).toBe(true);
+        });
+
+        it('should NOT capture subscriptions made after the scope has already returned', () => {
+            const [get, set, subscribe] = ultraState(0);
+            let notified = false;
+            let lateSubscribe: (() => void) | null = null;
+
+            ultraScope(() => {
+                lateSubscribe = () => subscribe(() => { notified = true; });
+            });
+            lateSubscribe!();
+
+            set(get() + 1);
+            expect(notified).toBe(true);
+        });
+
+        it('should restore the previous active scope after a nested ultraScope call', () => {
+            const [outerGet, outerSet, outerSubscribe] = ultraState(0);
+            const [innerGet, innerSet, innerSubscribe] = ultraState(0);
+            let outerNotified = false;
+            let innerNotified = false;
+
+            const [, disposeOuter] = ultraScope(() => {
+                const [, disposeInner] = ultraScope(() => {
+                    innerSubscribe(() => { innerNotified = true; });
+                });
+                disposeInner();
+                outerSubscribe(() => { outerNotified = true; });
+            });
+
+            innerSet(innerGet() + 1);
+            expect(innerNotified).toBe(false);
+
+            disposeOuter();
+            outerSet(outerGet() + 1);
+            expect(outerNotified).toBe(false);
+        });
+
+        it('should be safe to call the disposer more than once', () => {
+            const [, , subscribe] = ultraState(0);
+            let dispose: () => void = () => {};
+
+            expect(() => {
+                [, dispose] = ultraScope(() => {
+                    subscribe(() => {});
+                });
+                dispose();
+                dispose();
+            }).not.toThrowError();
         });
 
     }, time_out);

@@ -795,6 +795,65 @@ describe('Components', () => {
             expect(prevCleanupCalled).toBe(true);
         });
 
+        it('should dispose ultraState subscriptions made inside a route component when navigating away', () => {
+            happyWindow.history.pushState({}, '', '/');
+            const [get, set, subscribe] = ultraState(0);
+            let notified = false;
+
+            UltraRouter(
+                {
+                    path: '/', component: () => {
+                        subscribe(() => { notified = true; });
+                        return '<p>Home</p>';
+                    }
+                },
+                { path: '/next', component: () => '<p>Next</p>' }
+            );
+
+            happyWindow.history.pushState({}, '', '/next');
+            window.dispatchEvent(new window.PopStateEvent('popstate'));
+
+            set(get() + 1);
+            expect(notified).toBe(false);
+        });
+
+        it('should dispose ultraState subscriptions made inside a route component when the router is cleaned up', () => {
+            happyWindow.history.pushState({}, '', '/');
+            const [get, set, subscribe] = ultraState(0);
+            let notified = false;
+
+            const router = UltraRouter({
+                path: '/', component: () => {
+                    subscribe(() => { notified = true; });
+                    return '<p>Home</p>';
+                }
+            });
+
+            router._cleanup?.();
+
+            set(get() + 1);
+            expect(notified).toBe(false);
+        });
+
+        it('should dispose subscriptions made in an unused wildcard branch immediately', () => {
+            happyWindow.history.pushState({}, '', '/');
+            const [get, set, subscribe] = ultraState(0);
+            let notified = false;
+
+            UltraRouter(
+                { path: '/', component: () => '<p>Home</p>' },
+                {
+                    path: '/*', component: () => {
+                        subscribe(() => { notified = true; });
+                        return '<p>Not Found</p>';
+                    }
+                }
+            );
+
+            set(get() + 1);
+            expect(notified).toBe(false);
+        });
+
     }, time_out);
 
     suite('UltraLink', () => {
