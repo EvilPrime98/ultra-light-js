@@ -9,7 +9,8 @@ import {
     UltraRouter,
     UltraLink,
     ultraPortal,
-    UltraFragment
+    UltraFragment,
+    ultraScope
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -21,6 +22,9 @@ describe('Components', () => {
     const document = happyWindow.document;
     const window = happyWindow;
     document.write('<!doctype html><html><body></body></html>');
+
+    const nextFrame = (): Promise<void> =>
+        new Promise(resolve => happyWindow.requestAnimationFrame(() => resolve()));
 
     suite('parseHTMLString', () => {
 
@@ -172,7 +176,11 @@ describe('Components', () => {
     suite('UltraComponent', () => {
 
         beforeAll(() => {
-            Object.assign(globalThis, { window: happyWindow, document: happyWindow.document });
+            Object.assign(globalThis, {
+                window: happyWindow,
+                document: happyWindow.document,
+                requestAnimationFrame: happyWindow.requestAnimationFrame.bind(happyWindow)
+            });
         });
 
         it('should return an HTMLElement from a valid HTML string', () => {
@@ -211,6 +219,44 @@ describe('Components', () => {
             $el._cleanup?.();
             $el.click();
             expect(clickCount).toBe(1);
+        });
+
+        it('should run onMount callbacks on the next frame', async () => {
+            let mountedCount = 0;
+            UltraComponent({
+                component: '<div></div>',
+                onMount: [() => { mountedCount++; }]
+            });
+            expect(mountedCount).toBe(0);
+            await nextFrame();
+            expect(mountedCount).toBe(1);
+        });
+
+        it('should not run onMount callbacks when the owning scope is disposed before the frame fires', async () => {
+            let mountedCount = 0;
+            const [, dispose] = ultraScope(() => UltraComponent({
+                component: '<div></div>',
+                onMount: [() => { mountedCount++; }]
+            }));
+            dispose();
+            await nextFrame();
+            expect(mountedCount).toBe(0);
+        });
+
+        it('should run a cleanup resolved by an async onMount immediately if the scope was disposed while awaiting', async () => {
+            let cleaned = false;
+            let release!: () => void;
+            const pending = new Promise<void>(resolve => { release = resolve; });
+            const [, dispose] = ultraScope(() => UltraComponent({
+                component: '<div></div>',
+                onMount: [() => pending.then(() => () => { cleaned = true; })]
+            }));
+            await nextFrame();
+            dispose();
+            release();
+            await pending;
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(cleaned).toBe(true);
         });
 
         it('should apply CSS styles to the element', () => {
@@ -660,7 +706,8 @@ describe('Components', () => {
         beforeAll(() => {
             Object.assign(globalThis, {
                 window: happyWindow,
-                document: happyWindow.document
+                document: happyWindow.document,
+                requestAnimationFrame: happyWindow.requestAnimationFrame.bind(happyWindow)
             });
         });
 
@@ -852,6 +899,61 @@ describe('Components', () => {
 
             set(get() + 1);
             expect(notified).toBe(false);
+        });
+
+        it('should not construct the wildcard component when a specific route matches', () => {
+            happyWindow.history.pushState({}, '', '/users/1');
+            let wildcardConstructions = 0;
+            const router = UltraRouter(
+                { path: '/users/:id', component: () => '<p>User</p>' },
+                {
+                    path: '/*', component: () => {
+                        wildcardConstructions++;
+                        return '<p>Not Found</p>';
+                    }
+                }
+            );
+            expect(router.querySelector('p')?.textContent).toBe('User');
+            expect(wildcardConstructions).toBe(0);
+        });
+
+        it('should construct the wildcard component exactly once when no specific route matches', () => {
+            happyWindow.history.pushState({}, '', '/no-match');
+            let wildcardConstructions = 0;
+            const router = UltraRouter(
+                { path: '/', component: () => '<p>Home</p>' },
+                {
+                    path: '/*', component: () => {
+                        wildcardConstructions++;
+                        return '<p>Not Found</p>';
+                    }
+                }
+            );
+            expect(router.querySelector('p')?.textContent).toBe('Not Found');
+            expect(wildcardConstructions).toBe(1);
+        });
+
+        it('should run onMount only for the matched route and leak no wildcard listeners', async () => {
+            happyWindow.history.pushState({}, '', '/abc');
+            const mounted: string[] = [];
+            let liveListeners = 0;
+            const Page = (name: string): HTMLElement => UltraComponent({
+                component: '<div></div>',
+                onMount: [() => {
+                    mounted.push(name);
+                    liveListeners++;
+                    return () => { liveListeners--; };
+                }]
+            }) as HTMLElement;
+
+            UltraRouter(
+                { path: '/:uid', component: () => Page('specific') },
+                { path: '/*', component: () => Page('wildcard') }
+            );
+
+            await nextFrame();
+            expect(mounted).toEqual(['specific']);
+            expect(liveListeners).toBe(1);
         });
 
     }, time_out);
