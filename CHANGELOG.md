@@ -1,4 +1,4 @@
-# ultra-light.js
+# ultra-light-js
 
 ## 1.1.0
 
