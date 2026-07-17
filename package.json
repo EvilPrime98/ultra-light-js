@@ -1,5 +1,5 @@
 {
-  "name": "ultra-light.js",
+  "name": "ultra-light-js",
   "version": "1.1.0",
   "description": "A lightweight JavaScript framework for building reactive, state-management, and SPA applications.",
   "type": "module",
