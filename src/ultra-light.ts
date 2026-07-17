@@ -291,27 +291,6 @@ function matchRoute(routePath: string, currentPath: string): UltraRouteMatch {
  * @returns
  */
 
-/**
- * @internal
- * Factored out of `renderRoute` deliberately: inlining this as an `if (targetComponent) {...}
- * else { wildcardDispose?.() }` directly in `renderRoute` trips a TypeScript control-flow-narrowing
- * false positive (`TS2349: Type 'never' has no call signatures`) on the two nullable disposer
- * variables once they're assigned inside the preceding `routes.forEach` closure. Passing them
- * through a function boundary resets the (incorrect) narrowing.
- */
-function reconcileRouteScope(
-    hasTargetComponent: boolean,
-    wildcardComponent: HTMLElement | Node | null,
-    targetDispose: UltraCleanupFunction | null,
-    wildcardDispose: UltraCleanupFunction | null
-): UltraCleanupFunction | null {
-    if (!hasTargetComponent && wildcardComponent) {
-        return wildcardDispose;
-    }
-    wildcardDispose?.();
-    return targetDispose;
-}
-
 export function UltraRouter(
     ...routes: UltraRoute[]
 ): UltraLightDiv {
@@ -341,31 +320,26 @@ export function UltraRouter(
         const currentPath = window.location.pathname;
 
         let targetComponent: HTMLElement | Node | null = null;
-        let routeParams: Record<string, string> = {};
-        let wildcardComponent: HTMLElement | Node | null = null;
-        let targetDispose: UltraCleanupFunction | null = null;
-        let wildcardDispose: UltraCleanupFunction | null = null;
+        let scopeDispose: UltraCleanupFunction | null = null;
 
-        routes.forEach(route => {
+        for (const route of routes) {
             const match = matchRoute(route.path, currentPath);
-
-            if (match.matched && !match.isWildcard && !targetComponent) {
-                routeParams = match.params;
+            if (match.matched && !match.isWildcard) {
+                const routeParams = match.params;
                 const [component, dispose] = ultraScope(() => route.component(routeParams));
                 targetComponent = parseHTMLString(component);
-                targetDispose = dispose;
-            } else if (match.matched && match.isWildcard) {
-                const [component, dispose] = ultraScope(() => route.component());
-                wildcardComponent = parseHTMLString(component);
-                wildcardDispose = dispose;
+                scopeDispose = dispose;
+                break;
             }
-        });
+        }
 
-        // Each branch runs in its own scope; discard whichever one isn't kept immediately
-        // instead of leaking its subscriptions until the next navigation.
-        const scopeDispose = reconcileRouteScope(!!targetComponent, wildcardComponent, targetDispose, wildcardDispose);
-        if (!targetComponent && wildcardComponent) {
-            targetComponent = wildcardComponent;
+        if (!targetComponent) {
+            const wildcardRoute = routes.find(route => matchRoute(route.path, currentPath).isWildcard);
+            if (wildcardRoute) {
+                const [component, dispose] = ultraScope(() => wildcardRoute.component());
+                targetComponent = parseHTMLString(component);
+                scopeDispose = dispose;
+            }
         }
 
         container.innerHTML = '';
@@ -586,6 +560,10 @@ export function UltraComponent({
     /**
      * Array of functions that are called inmediately after the component is mounted.
      * May be async — a returned cleanup function is registered after the promise resolves.
+     *
+     * If the component was constructed inside an {@link ultraScope} and that scope is
+     * disposed before the next frame, pending callbacks are skipped; a cleanup resolved
+     * by an async callback after disposal runs immediately instead of being registered.
      */
     onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction | Promise<void | UltraCleanupFunction>)[];
     /**
@@ -602,7 +580,16 @@ export function UltraComponent({
     }
 
     const cleanupFunctions: UltraCleanupFunction[] = [];
-    
+
+    // A scope dispose means this component was torn down (or its route branch discarded)
+    // before its scheduled onMount frames fired; those callbacks must not run against a
+    // detached tree, and cleanups resolving late from async onMounts must run immediately
+    // since _cleanup has already flushed the list.
+    let disposed = false;
+    registerInScope(() => {
+        disposed = true;
+    });
+
     //add cleanup functions for event handlers
 
     (Object.keys(eventHandler) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
@@ -661,10 +648,16 @@ export function UltraComponent({
     onMount.forEach(fn => {
         requestAnimationFrame(() => {
             void (async () => {
+                if (disposed) return;
                 try {
                     const result = fn(node);
                     const cleanup = result instanceof Promise ? await result : result;
-                    if (cleanup) cleanupFunctions.push(cleanup);
+                    if (!cleanup) return;
+                    if (disposed) {
+                        cleanup();
+                    } else {
+                        cleanupFunctions.push(cleanup);
+                    }
                 } catch (error) {
                     console.error('Error while executing onMount function(s):', error);
                 }
