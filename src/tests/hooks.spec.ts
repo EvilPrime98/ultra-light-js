@@ -1,4 +1,4 @@
-import { describe, expect, it, suite, vi, beforeAll } from 'vitest';
+import { describe, expect, expectTypeOf, it, suite, vi, beforeAll } from 'vitest';
 import { parseHTML } from 'linkedom';
 import { Window } from 'happy-dom';
 import {
@@ -10,7 +10,8 @@ import {
     ultraNavigate,
     ultraStyles2,
     ultraQueryParams,
-    ultraScope
+    ultraScope,
+    type IUltraCompStateStateful
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -554,6 +555,32 @@ describe('hooks', () => {
             foo.b.set(1);
             expect(detected).toBe(false);
             foo.a.set(0);
+        });
+
+        it('should preserve a generic type parameter on a comp method instead of collapsing it to a union of all instantiations', () => {
+            interface IUserPref {
+                filter: 'Alphabetically' | 'Creation Date';
+                comicType: 'cover' | 'detail';
+            }
+
+            interface IUserPrefCtx {
+                pref: IUltraCompStateStateful<IUserPref>;
+                getPref: <K extends keyof IUserPref>(prefKey: K) => IUserPref[K];
+            }
+
+            const userPref: IUserPrefCtx = ultraCompState({
+                pref: { filter: 'Alphabetically', comicType: 'cover' } as IUserPref,
+                getPref: <K extends keyof IUserPref>(
+                    comp: IUserPrefCtx,
+                    prefKey: K
+                ): IUserPref[K] => comp.pref.get()[prefKey],
+            });
+
+            expectTypeOf(userPref.getPref('filter')).toEqualTypeOf<IUserPref['filter']>();
+            expectTypeOf(userPref.getPref('comicType')).toEqualTypeOf<IUserPref['comicType']>();
+
+            expect(userPref.getPref('filter')).toBe('Alphabetically');
+            expect(userPref.getPref('comicType')).toBe('cover');
         });
 
     }, time_out);
