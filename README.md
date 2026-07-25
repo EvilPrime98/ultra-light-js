@@ -245,13 +245,22 @@ document.body.appendChild(router);
 
 Each route's `component` function is run inside its own [`ultraScope`](#ultrascopefn), so any `ultraState`/`ultraCompState` subscription made synchronously inside it is automatically disposed on navigation or when the router is cleaned up — no need to manually collect and pass those subscriptions into a `cleanup` array.
 
-### UltraLink({ href, child })
+### UltraLink(props)
 
-Creates SPA navigation links. Ctrl/Meta+click opens in a new tab normally.
+Creates SPA navigation links. Ctrl/Meta+click opens in a new tab normally. Shares the same props as `UltraComponent` (`eventHandler`, `attributes`, `styles`, `className`, `children`, `trigger`, `onMount`, `cleanup`), applied to the underlying anchor element, plus `href` and `viewTransition`.
 ```javascript
 const link = UltraLink({
   href: '/about',
-  child: '<span>Go to About</span>'
+  children: ['<span>Go to About</span>'],
+
+  // viewTransition uses the View Transition API when available
+  viewTransition: true,
+
+  // Same shared props as UltraComponent
+  eventHandler: {
+    mouseenter: () => console.log('hovered')
+  },
+  className: ['nav-link']
 });
 ```
 

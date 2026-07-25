@@ -1,4 +1,4 @@
-import { describe, expect, it, suite, beforeAll, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, suite, beforeAll, vi } from 'vitest';
 import { Window } from 'happy-dom';
 import {
     parseHTMLString,
@@ -10,7 +10,8 @@ import {
     UltraLink,
     ultraPortal,
     UltraFragment,
-    ultraScope
+    ultraScope,
+    type UltraElementProps
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -581,6 +582,32 @@ describe('Components', () => {
             expect(cleanupCalled).toBe(true);
         });
 
+        // Issue #12: UltraActivity now shares UltraComponent's onMount/props implementation.
+
+        it('should run onMount callbacks on the next frame', async () => {
+            let mountedCount = 0;
+            UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => { } },
+                onMount: [() => { mountedCount++; }]
+            });
+            expect(mountedCount).toBe(0);
+            await nextFrame();
+            expect(mountedCount).toBe(1);
+        });
+
+        it('should not run onMount callbacks when the owning scope is disposed before the frame fires', async () => {
+            let mountedCount = 0;
+            const [, dispose] = ultraScope(() => UltraActivity({
+                component: '<div></div>',
+                mode: { state: () => true, subscriber: () => () => { } },
+                onMount: [() => { mountedCount++; }]
+            }));
+            dispose();
+            await nextFrame();
+            expect(mountedCount).toBe(0);
+        });
+
         it('should skip null values in children array', () => {
             const $el = UltraActivity({
                 component: '<div></div>',
@@ -1109,6 +1136,133 @@ describe('Components', () => {
             expect(transitionSpy).not.toHaveBeenCalled();
             // @ts-expect-error: startViewTransition is not optional in lib.dom types
             delete document.startViewTransition;
+        });
+
+        // Issue #12: UltraLink should support the same shared props as UltraComponent/UltraActivity.
+
+        it('should default children to an empty array', () => {
+            const link = UltraLink({ href: '/home' });
+            expect(link.children.length).toBe(0);
+        });
+
+        it('should attach event handlers to the anchor element', () => {
+            happyWindow.history.pushState({}, '', '/eh-start');
+            let hovered = false;
+            const link = UltraLink({
+                href: '/eh-dest',
+                children: [],
+                eventHandler: { mouseenter: () => { hovered = true; } }
+            });
+            link.dispatchEvent(new window.MouseEvent('mouseenter'));
+            expect(hovered).toBe(true);
+        });
+
+        it('should remove event handlers when _cleanup is called', () => {
+            happyWindow.history.pushState({}, '', '/eh-cleanup-start');
+            let count = 0;
+            const link = UltraLink({
+                href: '/eh-cleanup-dest',
+                children: [],
+                eventHandler: { mouseenter: () => { count++; } }
+            });
+            link.dispatchEvent(new window.MouseEvent('mouseenter'));
+            expect(count).toBe(1);
+            link._cleanup?.();
+            link.dispatchEvent(new window.MouseEvent('mouseenter'));
+            expect(count).toBe(1);
+        });
+
+        it('should apply CSS styles to the anchor element', () => {
+            const link = UltraLink({
+                href: '/styles',
+                children: [],
+                styles: { color: 'red' }
+            });
+            expect((link as HTMLElement).style.color).toBe('red');
+        });
+
+        it('should apply HTML attributes to the anchor element', () => {
+            const link = UltraLink({
+                href: '/attrs',
+                children: [],
+                attributes: { 'data-value': '42' }
+            });
+            expect((link as HTMLElement).getAttribute('data-value')).toBe('42');
+        });
+
+        it('should run onMount callbacks on the next frame', async () => {
+            let mountedCount = 0;
+            UltraLink({
+                href: '/onmount',
+                children: [],
+                onMount: [() => { mountedCount++; }]
+            });
+            expect(mountedCount).toBe(0);
+            await nextFrame();
+            expect(mountedCount).toBe(1);
+        });
+
+        it('should call triggerFunction when the subscriber notifies', () => {
+            const [, set, subscriber] = ultraState(0);
+            let triggered = false;
+            UltraLink({
+                href: '/trigger',
+                children: [],
+                trigger: [{ subscriber, triggerFunction: () => { triggered = true; } }]
+            });
+            set(1);
+            expect(triggered).toBe(true);
+        });
+
+        it('should call custom cleanup functions when _cleanup is called', () => {
+            let cleanupCalled = false;
+            const link = UltraLink({
+                href: '/cleanup',
+                children: [],
+                cleanup: [() => { cleanupCalled = true; }]
+            });
+            link._cleanup?.();
+            expect(cleanupCalled).toBe(true);
+        });
+
+    }, time_out);
+
+    suite('UltraElementProps (type-level parity)', () => {
+
+        // Issue #12: UltraComponent, UltraActivity, and UltraLink should all accept
+        // the same shared prop shape. These assertions are compile-time only — a
+        // mismatch here fails `tsc`/`vitest typecheck`, not `expect()` at runtime.
+
+        it('UltraComponent accepts every UltraElementProps field with the same type', () => {
+            type Props = Parameters<typeof UltraComponent>[0];
+            expectTypeOf<Props['eventHandler']>().toEqualTypeOf<UltraElementProps['eventHandler']>();
+            expectTypeOf<Props['attributes']>().toEqualTypeOf<UltraElementProps['attributes']>();
+            expectTypeOf<Props['styles']>().toEqualTypeOf<UltraElementProps['styles']>();
+            expectTypeOf<Props['className']>().toEqualTypeOf<UltraElementProps['className']>();
+            expectTypeOf<Props['trigger']>().toEqualTypeOf<UltraElementProps['trigger']>();
+            expectTypeOf<Props['onMount']>().toEqualTypeOf<UltraElementProps['onMount']>();
+            expectTypeOf<Props['cleanup']>().toEqualTypeOf<UltraElementProps['cleanup']>();
+        });
+
+        it('UltraActivity accepts every UltraElementProps field with the same type', () => {
+            type Props = Parameters<typeof UltraActivity>[0];
+            expectTypeOf<Props['eventHandler']>().toEqualTypeOf<UltraElementProps['eventHandler']>();
+            expectTypeOf<Props['attributes']>().toEqualTypeOf<UltraElementProps['attributes']>();
+            expectTypeOf<Props['styles']>().toEqualTypeOf<UltraElementProps['styles']>();
+            expectTypeOf<Props['className']>().toEqualTypeOf<UltraElementProps['className']>();
+            expectTypeOf<Props['trigger']>().toEqualTypeOf<UltraElementProps['trigger']>();
+            expectTypeOf<Props['onMount']>().toEqualTypeOf<UltraElementProps['onMount']>();
+            expectTypeOf<Props['cleanup']>().toEqualTypeOf<UltraElementProps['cleanup']>();
+        });
+
+        it('UltraLink accepts every UltraElementProps field with the same type (issue #12 gap)', () => {
+            type Props = Parameters<typeof UltraLink>[0];
+            expectTypeOf<Props['eventHandler']>().toEqualTypeOf<UltraElementProps['eventHandler']>();
+            expectTypeOf<Props['attributes']>().toEqualTypeOf<UltraElementProps['attributes']>();
+            expectTypeOf<Props['styles']>().toEqualTypeOf<UltraElementProps['styles']>();
+            expectTypeOf<Props['trigger']>().toEqualTypeOf<UltraElementProps['trigger']>();
+            expectTypeOf<Props['onMount']>().toEqualTypeOf<UltraElementProps['onMount']>();
+            expectTypeOf<Props['cleanup']>().toEqualTypeOf<UltraElementProps['cleanup']>();
         });
 
     }, time_out);

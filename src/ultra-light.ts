@@ -13,6 +13,7 @@ import {
     type UltraCompStateResult,
     type IUltraCompStateStateful,
     type AllHTMLAttributes,
+    type UltraElementProps,
     CSSProperties
 } from './types';
 
@@ -26,7 +27,8 @@ export type {
     UltraLightAnchor,
     UltraLightDiv,
     IUltraCompStateStateful,
-    UltraRenderableElement
+    UltraRenderableElement,
+    UltraElementProps
 }
 
 const SVG_EXCLUSIVE_TAGS = new Set([
@@ -413,33 +415,146 @@ export function ultraNavigate({
 }
 
 /**
+ * Applies the shared {@link UltraElementProps} (event handlers, attributes, styles,
+ * class names, triggers, mount callbacks, and cleanup functions) to `node`, pushing
+ * every teardown it registers onto `cleanupFunctions`.
+ *
+ * Children are deliberately **not** handled here: `UltraComponent`, `UltraActivity`,
+ * and `UltraLink` each append children slightly differently (e.g. `UltraActivity`
+ * needs to track fragment children separately for its visibility targeting), so that
+ * step stays local to each caller.
+ * @internal
+ */
+function applyUltraElementProps(
+    node: UltraLightElement,
+    {
+        eventHandler = {},
+        attributes = {},
+        styles = {},
+        className = [],
+        trigger = [],
+        onMount = [],
+        cleanup = []
+    }: UltraElementProps,
+    cleanupFunctions: UltraCleanupFunction[]
+): void {
+
+    let disposed = false;
+    registerInScope(() => {
+        disposed = true;
+    });
+
+    (Object.keys(eventHandler) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
+        const handler = eventHandler[event];
+        if (handler) {
+            node.addEventListener(event, handler);
+            cleanupFunctions.push(() => node.removeEventListener(event, handler));
+        }
+    });
+
+    (Object.keys(attributes) as (keyof AllHTMLAttributes)[]).forEach(key => {
+        try {
+            node.setAttribute(key as string, attributes[key] as string);
+        } catch (error) {
+            console.error(`Error applying attribute ${String(key)}:`, error);
+        }
+    });
+
+    Object.keys(styles).forEach(key => {
+        try {
+            (node.style as unknown as Record<string, string>)[key] = styles[key as keyof CSSStyleDeclaration] as string;
+        } catch (error) {
+            console.error(`Error applying style ${key}:`, error);
+        }
+    });
+
+    className.forEach(cls => {
+        try {
+            if (cls) node.classList.add(cls);
+        } catch (error) {
+            console.error(`Error applying class ${cls}:`, error);
+        }
+    });
+
+    onMount.forEach(fn => {
+        requestAnimationFrame(() => {
+            void (async () => {
+                if (disposed) return;
+                try {
+                    const result = fn(node);
+                    const cleanupFn = result instanceof Promise ? await result : result;
+                    if (!cleanupFn) return;
+                    if (disposed) {
+                        cleanupFn();
+                    } else {
+                        cleanupFunctions.push(cleanupFn);
+                    }
+                } catch (error) {
+                    console.error('Error while executing onMount function(s):', error);
+                }
+            })();
+        });
+    });
+
+    trigger.forEach(t => {
+        const { subscriber, triggerFunction, defer } = t;
+        if (subscriber && triggerFunction) {
+            try {
+                const callback = defer
+                    ? () => requestAnimationFrame(() => triggerFunction(node))
+                    : () => triggerFunction(node);
+                const subscribers = Array.isArray(subscriber) ? subscriber : [subscriber];
+                subscribers.forEach(sub => {
+                    const unsubscribe = sub(callback);
+                    if (unsubscribe) {
+                        cleanupFunctions.push(unsubscribe);
+                    }
+                });
+            } catch (error) {
+                console.error('Error in trigger:', error);
+            }
+        }
+    });
+
+    cleanup.forEach(fn => {
+        try {
+            cleanupFunctions.push(fn);
+        } catch (error) {
+            console.error('Error adding cleanup:', error);
+        }
+    });
+
+}
+
+/**
  * This functional component is used to create a link element that works within
- * the UltraRouter context.
+ * the UltraRouter context. Beyond navigation, it accepts the same shared
+ * {@link UltraElementProps} as `UltraComponent`/`UltraActivity` (event handlers,
+ * attributes, styles, triggers, onMount callbacks, cleanup), applied to the
+ * underlying anchor element.
  */
 export function UltraLink({
     href,
-    children,
+    children = [],
     viewTransition = false,
-    className = []
+    className = [],
+    eventHandler = {},
+    attributes = {},
+    styles = {},
+    trigger = [],
+    onMount = [],
+    cleanup = []
 }: {
     /**
      * The href of the link. It should be a relative path.
      */
     href: string;
     /**
-     * Array of child components. It accepts null values for conditional rendering.
-     */
-    children: (UltraRenderableElement | Node | UltraLightElement | null)[];
-    /**
      * When true, the link will be transitioned to the new page using the viewtransition API.
      * This is useful for transitioning between pages with animations.
      */
     viewTransition?: boolean;
-    /**
-     * Array of class names.
-     */
-    className?: string[];
-}): UltraLightElement {
+} & UltraElementProps): UltraLightElement {
     if (!href) {
         console.warn('UltraLink: href is required');
     }
@@ -471,6 +586,9 @@ export function UltraLink({
         }
     };
     link.addEventListener('click', clickHandler);
+
+    const cleanupFunctions: UltraCleanupFunction[] = [];
+
     children.forEach(child => {
         if (!child) return;
         const childElement = parseHTMLString(child);
@@ -482,8 +600,22 @@ export function UltraLink({
         if (!sel) return;
         link.classList.add(sel);
     });
+
+    applyUltraElementProps(
+        link,
+        { eventHandler, attributes, styles, trigger, onMount, cleanup },
+        cleanupFunctions
+    );
+
     link._cleanup = () => {
         link.removeEventListener('click', clickHandler);
+        cleanupFunctions.forEach(fn => {
+            try {
+                fn();
+            } catch (error) {
+                console.error('Error while cleaning up UltraLink:', error);
+            }
+        });
     };
     return link;
 }
@@ -515,8 +647,8 @@ export function UltraFragment(
 /**
  * This functional component is used to create a custom HTML element with event handlers, styles, children, triggers, and cleanup functions.
  * Only one parent component will be rendered per instance of this component.
- * @param {Object} props - Object containing the component, eventHandler, styles, children, trigger, and cleanup.
- * @returns 
+ * @param props Object containing `component` plus the shared {@link UltraElementProps} (eventHandler, attributes, styles, className, children, trigger, onMount, cleanup).
+ * @returns
  */
 export function UltraComponent({
     component,
@@ -533,44 +665,7 @@ export function UltraComponent({
      * The parent component to be rendered. It accepts children in plain HTML.
      */
     component: UltraRenderableElement;
-    /**
-     * Object containing the event handlers.
-     */
-    eventHandler?: Partial<Record<keyof HTMLElementEventMap, EventListenerOrEventListenerObject>>;
-    /** 
-     * Object containing the HTML attributes.
-     */
-    attributes?: Partial<Record<keyof AllHTMLAttributes, string>>;
-    /**
-     * Object containing the CSS styles.
-     */
-    styles?: Partial<CSSStyleDeclaration>;
-    /** 
-     * Array of class names.
-     */
-    className?: string[];
-    /**
-     * Array of child components. It accepts null values for conditional rendering.
-     */
-    children?: (UltraRenderableElement | Node | UltraLightElement | null)[];
-    /**
-     * Array of trigger objects.
-     */
-    trigger?: UltraTrigger[];
-    /**
-     * Array of functions that are called inmediately after the component is mounted.
-     * May be async — a returned cleanup function is registered after the promise resolves.
-     *
-     * If the component was constructed inside an {@link ultraScope} and that scope is
-     * disposed before the next frame, pending callbacks are skipped; a cleanup resolved
-     * by an async callback after disposal runs immediately instead of being registered.
-     */
-    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction | Promise<void | UltraCleanupFunction>)[];
-    /**
-     * Array of cleanup functions.
-     */
-    cleanup?: UltraCleanupFunction[];
-}): UltraLightElement {
+} & UltraElementProps): UltraLightElement {
 
     const node = parseHTMLString(component) as UltraLightElement;
 
@@ -581,57 +676,8 @@ export function UltraComponent({
 
     const cleanupFunctions: UltraCleanupFunction[] = [];
 
-    // A scope dispose means this component was torn down (or its route branch discarded)
-    // before its scheduled onMount frames fired; those callbacks must not run against a
-    // detached tree, and cleanups resolving late from async onMounts must run immediately
-    // since _cleanup has already flushed the list.
-    let disposed = false;
-    registerInScope(() => {
-        disposed = true;
-    });
-
-    //add cleanup functions for event handlers
-
-    (Object.keys(eventHandler) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
-        const handler = eventHandler[event];
-        if (handler) {
-            node.addEventListener(event, handler);
-            cleanupFunctions.push(() => node.removeEventListener(event, handler));
-        }
-    });
-
-    //add styles
-
-    Object.keys(styles).forEach(key => {
-        try {
-            ((node as HTMLElement).style as unknown as Record<string, string>)[key] = styles[key as keyof CSSStyleDeclaration] as string;
-        } catch (error) {
-            console.error(`Error al aplicar estilo ${key}:`, error);
-        }
-    });
-
-    //add attributes
-
-    (Object.keys(attributes) as (keyof AllHTMLAttributes)[]).forEach(key => {
-        try {
-            (node as HTMLElement).setAttribute(key as string, attributes[key] as string);
-        } catch (error) {
-            console.error(`Error applying attribute ${String(key)}:`, error);
-        }
-    });
-
-    //add class names
-
-    className.forEach(className => {
-        try {
-            if (className) node.classList.add(className);
-        } catch (error) {
-            console.error(`Error al aplicar clase ${className}:`, error);
-        }
-    });
-
     //add children
-    
+
     children.forEach(child => {
         if (!child) return;
         const childElement = parseHTMLString(child);
@@ -643,59 +689,13 @@ export function UltraComponent({
         }
     });
 
-    //add onMount functions
+    //add shared props: event handlers, attributes, styles, class names, onMount, triggers, cleanup
 
-    onMount.forEach(fn => {
-        requestAnimationFrame(() => {
-            void (async () => {
-                if (disposed) return;
-                try {
-                    const result = fn(node);
-                    const cleanup = result instanceof Promise ? await result : result;
-                    if (!cleanup) return;
-                    if (disposed) {
-                        cleanup();
-                    } else {
-                        cleanupFunctions.push(cleanup);
-                    }
-                } catch (error) {
-                    console.error('Error while executing onMount function(s):', error);
-                }
-            })();
-        });
-    });
-
-    //add cleanup functions for triggers
-
-    trigger.forEach(t => {
-        const { subscriber, triggerFunction: subscriberFunction, defer } = t;
-        if (subscriber && subscriberFunction) {
-            try {
-                const callback = defer
-                    ? () => requestAnimationFrame(() => subscriberFunction(node as HTMLElement))
-                    : () => subscriberFunction(node as HTMLElement);
-                const subscribers = Array.isArray(subscriber) ? subscriber : [subscriber];
-                subscribers.forEach(sub => {
-                    const unsubscribe = sub(callback);
-                    if (unsubscribe) {
-                        cleanupFunctions.push(unsubscribe);
-                    }
-                });
-            } catch (error) {
-                console.error('Error en trigger de UltraComponent:', error);
-            }
-        }
-    });
-
-    //add special cleanup function
-
-    cleanup.forEach(fn => {
-        try {
-            cleanupFunctions.push(fn);
-        } catch (error) {
-            console.error('Error añadiendo cleanup de UltraComponent:', error);
-        }
-    });
+    applyUltraElementProps(
+        node,
+        { eventHandler, attributes, styles, className, trigger, onMount, cleanup },
+        cleanupFunctions
+    );
 
     //add cleanup function for node
 
@@ -715,8 +715,8 @@ export function UltraComponent({
 
 /**
  * This component is used to control the visibility of a component based on a state.
- * @param {Object} props - Object containing the component, eventHandler, styles, children, mode, trigger, type, and cleanup.
- * @returns 
+ * @param props Object containing `component`, `mode`, `type`, plus the shared {@link UltraElementProps} (eventHandler, attributes, styles, className, children, trigger, onMount, cleanup).
+ * @returns
  */
 export function UltraActivity({
     component,
@@ -736,32 +736,12 @@ export function UltraActivity({
      */
     component: UltraRenderableElement | UltraLightElement;
     /**
-     * Object containing the event handlers.
-     */
-    eventHandler?: Partial<Record<keyof HTMLElementEventMap, EventListenerOrEventListenerObject>>;
-    /**
-     * Object containing the HTML attributes.
-     */
-    attributes?: Partial<Record<keyof AllHTMLAttributes, string>>;
-    /**
-     * Object containing the CSS styles.
-     */
-    styles?: Partial<CSSStyleDeclaration>;
-    /** 
-     * Array of class names.
-     */
-    className?: string[];
-    /**
-     * Array of child components. It accepts null values for conditional rendering.
-     */
-    children?: (UltraRenderableElement | Node | UltraLightElement | null)[];
-    /**
      * Object containing the state and subscriber functions to control visibility.
      */
     mode: {
         /**
          * Returns a boolean value indicating whether the component should be visible or not.
-         * @returns 
+         * @returns
          */
         state: () => boolean;
         /**
@@ -770,23 +750,10 @@ export function UltraActivity({
         subscriber: ((fn: () => void) => () => void) | ((fn: () => void) => () => void)[];
     };
     /**
-     * Array of trigger objects.
-     */
-    trigger?: UltraTrigger[];
-    /**
      * Type of activity (display or visibility). Default is 'display'.
      */
     type?: 'display' | 'visibility';
-    /**
-     * Array of functions that are called inmediately after the component is mounted.
-     * May be async — a returned cleanup function is registered after the promise resolves.
-     */
-    onMount?: ((node: UltraLightElement) => void | UltraCleanupFunction | Promise<void | UltraCleanupFunction>)[];
-    /**
-     * Array of cleanup functions.
-     */
-    cleanup?: UltraCleanupFunction[];
-}): UltraLightElement {
+} & UltraElementProps): UltraLightElement {
 
     const supportedTypes = ['display', 'visibility'];
 
@@ -806,38 +773,16 @@ export function UltraActivity({
 
     const cleanupFunctions: UltraCleanupFunction[] = [];
 
-    (Object.keys(eventHandler) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
-        const handler = eventHandler[event];
-        if (handler) {
-            element.addEventListener(event, handler);
-            cleanupFunctions.push(() => element.removeEventListener(event, handler));
-        }
-    });
+    //add shared props: event handlers, attributes, styles, class names, onMount, triggers, cleanup
+    //(applied before `update()` below so a typed activity's own display/visibility toggle wins over
+    //any `styles.display`/`styles.visibility` the caller passed in)
 
-    (Object.keys(attributes) as (keyof AllHTMLAttributes)[]).forEach(key => {
-        try {
-            (element as HTMLElement).setAttribute(key as string, attributes[key] as string);
-        } catch (error) {
-            console.error(`Error applying attribute ${String(key)}:`, error);
-        }
-    });
+    applyUltraElementProps(
+        element,
+        { eventHandler, attributes, styles, className, trigger, onMount, cleanup },
+        cleanupFunctions
+    );
 
-    Object.keys(styles).forEach(key => {
-        try {
-            ((element as HTMLElement).style as unknown as Record<string, string>)[key] = styles[key as keyof CSSStyleDeclaration] as string;
-        } catch (error) {
-            console.error(`Error while applying style ${key}:`, error);
-        }
-    });
-
-    className.forEach(className => {
-        try {
-            if (className) element.classList.add(className);
-        } catch (error) {
-            console.error(`Error while applying class ${className}:`, error);
-        }
-    });
-    
     const fragmentChildren:(HTMLElement|Node)[] = []; //only used when the component is a fragment
     if (element.nodeType === 11 /* DOCUMENT_FRAGMENT_NODE */) {
         Array.from(element.childNodes).forEach(child => fragmentChildren.push(child));
@@ -885,48 +830,6 @@ export function UltraActivity({
     }
 
     update();
-
-    onMount.forEach(fn => {
-        requestAnimationFrame(() => {
-            void (async () => {
-                try {
-                    const result = fn(element);
-                    const cleanup = result instanceof Promise ? await result : result;
-                    if (cleanup) cleanupFunctions.push(cleanup);
-                } catch (error) {
-                    console.error('Error while executing onMount function(s):', error);
-                }
-            })();
-        });
-    });
-    
-    trigger.forEach(t => {
-        const { subscriber, triggerFunction, defer } = t;
-        if (subscriber && triggerFunction) {
-            try {
-                const callback = defer
-                    ? () => requestAnimationFrame(() => triggerFunction(element as HTMLElement))
-                    : () => triggerFunction(element as HTMLElement);
-                const subscribers = Array.isArray(subscriber) ? subscriber : [subscriber];
-                subscribers.forEach(sub => {
-                    const unsub = sub(callback);
-                    if (unsub) {
-                        cleanupFunctions.push(unsub);
-                    }
-                });
-            } catch (error) {
-                console.error('Error in Activity trigger:', error);
-            }
-        }
-    });
-
-    cleanup.forEach(fn => {
-        try {
-            cleanupFunctions.push(fn);
-        } catch (error) {
-            console.error('Error adding cleanup to Activity:', error);
-        }
-    });
 
     element._cleanup = () => {
         cleanupFunctions.forEach(cleanup => {
