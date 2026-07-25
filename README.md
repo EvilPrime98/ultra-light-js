@@ -24,6 +24,15 @@ npm install ultra-light-js
 pnpm add ultra-light-js
 ```
 
+Or via CDN, without a bundler:
+
+```html
+<script src="https://unpkg.com/ultra-light-js"></script>
+<script>
+  const { ultraState, UltraComponent } = UltraLight;
+</script>
+```
+
 ## Quick Start
 ```javascript
 import { ultraState, UltraComponent } from 'ultra-light-js';
