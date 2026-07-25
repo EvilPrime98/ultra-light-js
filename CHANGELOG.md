@@ -1,5 +1,11 @@
 # ultra-light-js
 
+## 1.3.0
+
+### Minor Changes
+
+- d054aa6: Add a global IIFE build (`dist/ultra-light.global.js`, exposed as `window.UltraLight`) and wire up the `unpkg`/`jsdelivr` `package.json` fields so the library can be consumed directly via `<script>` tag from a CDN, without a bundler.
+
 ## 1.2.0
 
 ### Minor Changes
