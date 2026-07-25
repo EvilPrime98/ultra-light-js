@@ -5,6 +5,8 @@
   "type": "module",
   "main": "./dist/ultra-light.js",
   "types": "dist/ultra-light.d.ts",
+  "unpkg": "dist/ultra-light.global.js",
+  "jsdelivr": "dist/ultra-light.global.js",
   "sideEffects": false,
   "engines": {
     "node": ">=18"
@@ -25,7 +27,7 @@
   },
   "scripts": {
     "dev": "vite ./test",
-    "build": "tsc",
+    "build": "tsc && vite build -c vite.global.config.ts",
     "prepare": "pnpm run build",
     "prepublishOnly": "pnpm run build",
     "lint": "eslint .",
