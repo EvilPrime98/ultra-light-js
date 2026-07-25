@@ -583,6 +583,63 @@ describe('hooks', () => {
             expect(userPref.getPref('comicType')).toBe('cover');
         });
 
+        it('should type a zero-extra-arg comp handler as () => R instead of a generic 1-arg function', () => {
+            interface ICtx {
+                count: IUltraCompStateStateful<number>;
+                increment: () => void;
+            }
+
+            const ctx: ICtx = ultraCompState({
+                count: 0,
+                increment: (comp: ICtx) => {
+                    comp.count.set(comp.count.get() + 1);
+                }
+            });
+
+            expectTypeOf(ctx.increment).toEqualTypeOf<() => void>();
+
+            ctx.increment();
+            expect(ctx.count.get()).toBe(1);
+        });
+
+        it('should type a fixed non-generic single-arg comp handler as (arg: A) => R', () => {
+            interface ICtx {
+                count: IUltraCompStateStateful<number>;
+                addBy: (amount: number) => void;
+            }
+
+            const ctx: ICtx = ultraCompState({
+                count: 0,
+                addBy: (comp: ICtx, amount: number) => {
+                    comp.count.set(comp.count.get() + amount);
+                }
+            });
+
+            expectTypeOf(ctx.addBy).toEqualTypeOf<(amount: number) => void>();
+
+            ctx.addBy(5);
+            expect(ctx.count.get()).toBe(5);
+        });
+
+        it('should type a multi-arg comp handler as (...args: Args) => R', () => {
+            interface ICtx {
+                count: IUltraCompStateStateful<number>;
+                addTwo: (a: number, b: number) => void;
+            }
+
+            const ctx: ICtx = ultraCompState({
+                count: 0,
+                addTwo: (comp: ICtx, a: number, b: number) => {
+                    comp.count.set(comp.count.get() + a + b);
+                }
+            });
+
+            expectTypeOf(ctx.addTwo).toEqualTypeOf<(a: number, b: number) => void>();
+
+            ctx.addTwo(2, 3);
+            expect(ctx.count.get()).toBe(5);
+        });
+
     }, time_out);
 
     suite('ultraQuery', () => {

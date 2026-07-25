@@ -66,11 +66,13 @@ export interface IUltraCompStateStateful<T> {
 }
 
 export type UltraCompStateResult<T extends Record<string, unknown>> = {
-    [K in keyof T]: T[K] extends <A>(comp: never, arg: A) => infer R
-        ? <A>(arg: A) => R
-        : T[K] extends (comp: never, ...args: infer Args) => infer R
-            ? (...args: Args) => R
-            : IUltraCompStateStateful<T[K]>;
+    [K in keyof T]: T[K] extends (comp: never, ...args: infer Args) => infer R
+        ? Args extends [infer A]
+            ? T[K] extends <G>(comp: never, arg: G) => infer R2
+                ? <G>(arg: G) => R2
+                : (arg: A) => R
+            : (...args: Args) => R
+        : IUltraCompStateStateful<T[K]>;
 };
 
 type HTMLElementUnion =
