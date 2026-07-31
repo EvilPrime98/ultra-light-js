@@ -1172,6 +1172,21 @@ describe('Components', () => {
             expect(count).toBe(1);
         });
 
+        it('should run eventHandler.click before the internal navigation handler (issue #21)', () => {
+            happyWindow.history.pushState({}, '', '/eh-click-start');
+            const order: string[] = [];
+            const popstateSpy = () => order.push('popstate');
+            happyWindow.addEventListener('popstate', popstateSpy);
+            const link = UltraLink({
+                href: '/eh-click-dest',
+                children: [],
+                eventHandler: { click: () => { order.push('eventHandler'); } }
+            });
+            link.click();
+            happyWindow.removeEventListener('popstate', popstateSpy);
+            expect(order).toEqual(['eventHandler', 'popstate']);
+        });
+
         it('should apply CSS styles to the anchor element', () => {
             const link = UltraLink({
                 href: '/styles',
