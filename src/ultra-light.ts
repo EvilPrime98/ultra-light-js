@@ -585,8 +585,6 @@ export function UltraLink({
             document.startViewTransition(navigate);
         }
     };
-    link.addEventListener('click', clickHandler);
-
     const cleanupFunctions: UltraCleanupFunction[] = [];
 
     children.forEach(child => {
@@ -606,6 +604,8 @@ export function UltraLink({
         { eventHandler, attributes, styles, trigger, onMount, cleanup },
         cleanupFunctions
     );
+
+    link.addEventListener('click', clickHandler);
 
     link._cleanup = () => {
         link.removeEventListener('click', clickHandler);
