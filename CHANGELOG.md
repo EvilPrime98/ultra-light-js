@@ -1,5 +1,11 @@
 # ultra-light-js
 
+## 1.3.2
+
+### Patch Changes
+
+- a6defb1: `UltraLink` now attaches the `eventHandler` prop (including any `click` handler) before registering its internal navigation click handler, so a consumer-supplied `click` handler always runs before ultra-navigation is triggered. Previously the internal handler was registered first, so navigation could already be underway by the time the consumer's handler ran.
+
 ## 1.3.1
 
 ### Patch Changes
