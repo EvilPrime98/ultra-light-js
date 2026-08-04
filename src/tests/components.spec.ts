@@ -10,8 +10,10 @@ import {
     UltraLink,
     ultraPortal,
     UltraFragment,
+    UltraErrorBoundary,
     ultraScope,
-    type UltraElementProps
+    type UltraElementProps,
+    type UltraErrorBoundaryProps
 } from '../ultra-light';
 
 const time_out = 1 * 1000;
@@ -170,6 +172,73 @@ describe('Components', () => {
             const result = UltraFragment('<div id="first"></div>', '<div id="second"></div>');
             expect((result.childNodes[0] as HTMLElement).id).toBe('first');
             expect((result.childNodes[1] as HTMLElement).id).toBe('second');
+        });
+
+    }, time_out);
+
+    suite('UltraErrorBoundary', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { window: happyWindow, document: happyWindow.document });
+        });
+
+        it('should return the element from a single successful factory', () => {
+            const el = document.createElement('div') as unknown as UltraLightElement;
+            const result = UltraErrorBoundary({
+                factories: () => el,
+                fallback: () => document.createElement('span') as unknown as UltraLightElement
+            });
+            expect(result).toBe(el);
+        });
+
+        it('should return a DocumentFragment combining multiple successful factories', () => {
+            const first = document.createElement('div') as unknown as UltraLightElement;
+            const second = document.createElement('p') as unknown as UltraLightElement;
+            const result = UltraErrorBoundary({
+                factories: [() => first, () => second],
+                fallback: () => document.createElement('span') as unknown as UltraLightElement
+            });
+            expect(result).toBeInstanceOf(window.DocumentFragment);
+            expect((result as DocumentFragment).childNodes[0]).toBe(first);
+            expect((result as DocumentFragment).childNodes[1]).toBe(second);
+        });
+
+        it('should render the fallback when a single factory throws', () => {
+            const fallbackEl = document.createElement('span') as unknown as UltraLightElement;
+            const result = UltraErrorBoundary({
+                factories: () => { throw new Error('boom'); },
+                fallback: () => fallbackEl
+            });
+            expect(result).toBe(fallbackEl);
+        });
+
+        it('should discard the whole batch and render only the fallback when one of several factories throws', () => {
+            const fallbackEl = document.createElement('span') as unknown as UltraLightElement;
+            const okFactory = vi.fn(() => document.createElement('div') as unknown as UltraLightElement);
+            const result = UltraErrorBoundary({
+                factories: [
+                    okFactory,
+                    () => { throw new Error('boom'); }
+                ],
+                fallback: () => fallbackEl
+            });
+            expect(result).toBe(fallbackEl);
+        });
+
+        it('should pass the caught error through to fallback', () => {
+            const thrown = new Error('boom');
+            const fallback = vi.fn(() => document.createElement('span') as unknown as UltraLightElement);
+            UltraErrorBoundary({
+                factories: () => { throw thrown; },
+                fallback
+            });
+            expect(fallback).toHaveBeenCalledWith(thrown);
+        });
+
+        it('should type-check UltraErrorBoundaryProps', () => {
+            expectTypeOf<UltraErrorBoundaryProps>().toHaveProperty('factories');
+            expectTypeOf<UltraErrorBoundaryProps>().toHaveProperty('fallback');
+            expectTypeOf<UltraErrorBoundaryProps['fallback']>().parameter(0).toEqualTypeOf<unknown>();
         });
 
     }, time_out);

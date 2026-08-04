@@ -360,6 +360,16 @@ const fragment = UltraFragment(
 );
 ```
 
+### UltraErrorBoundary(props)
+
+Wraps one or more zero-arg component factories in a try/catch, rendering `fallback` instead if any factory throws. A single factory's result is returned directly; multiple factories are combined with `UltraFragment` if they all succeed. Synchronous only — a rejected promise from an async factory is not caught.
+```javascript
+const Safe = UltraErrorBoundary({
+  factories: () => UltraComponent({ component: riskyMarkup() }),
+  fallback: (error) => UltraComponent({ component: `<div>Something went wrong: ${error}</div>` })
+});
+```
+
 ### ultraPortal(app, portal)
 
 Inserts a component directly after a given application root element, outside of the normal component tree. Useful for modals, tooltips, or anything that needs to escape a parent's `overflow`/`z-index` stacking context. Throws if the app element or the portal content can't be resolved.

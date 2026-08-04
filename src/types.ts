@@ -146,3 +146,21 @@ export interface UltraElementProps {
      */
     cleanup?: UltraCleanupFunction[];
 }
+
+/**
+ * Props for {@link UltraErrorBoundary}.
+ */
+export interface UltraErrorBoundaryProps {
+    /**
+     * One or more zero-arg factory functions that construct the component(s) to
+     * render. If any factory throws, the entire batch is discarded and `fallback`
+     * is rendered instead — synchronous only, rejected promises from async
+     * factories are not caught.
+     */
+    factories: (() => UltraLightElement) | (() => UltraLightElement)[];
+    /**
+     * Called with the error caught from `factories` when any of them throws.
+     * Its return value replaces the whole batch.
+     */
+    fallback: (error: unknown) => UltraLightElement;
+}

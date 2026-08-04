@@ -14,6 +14,7 @@ import {
     type IUltraCompStateStateful,
     type AllHTMLAttributes,
     type UltraElementProps,
+    type UltraErrorBoundaryProps,
     CSSProperties
 } from './types';
 
@@ -28,7 +29,8 @@ export type {
     UltraLightDiv,
     IUltraCompStateStateful,
     UltraRenderableElement,
-    UltraElementProps
+    UltraElementProps,
+    UltraErrorBoundaryProps
 }
 
 const SVG_EXCLUSIVE_TAGS = new Set([
@@ -641,7 +643,34 @@ export function UltraFragment(
     });
 
     return fragment;
-    
+
+}
+
+/**
+ * This functional component wraps one or more component factories in a
+ * try/catch, rendering `fallback` instead if any factory throws. A single
+ * factory's result is returned directly; multiple factories are combined
+ * with {@link UltraFragment}. Synchronous only — a rejected promise from an
+ * async factory is not caught.
+ * @param props Object containing `factories` (a single factory or array of
+ * factories) and `fallback` (receives the caught error, returns the
+ * replacement element).
+ * @returns
+ */
+export function UltraErrorBoundary({
+    factories,
+    fallback
+}: UltraErrorBoundaryProps): UltraLightElement | DocumentFragment {
+
+    try {
+        if (!Array.isArray(factories)) {
+            return factories();
+        }
+        return UltraFragment(...factories.map(factory => factory()));
+    } catch (error) {
+        return fallback(error);
+    }
+
 }
 
 /**
