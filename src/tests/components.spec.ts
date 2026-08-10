@@ -10,6 +10,7 @@ import {
     UltraLink,
     ultraPortal,
     UltraFragment,
+    ultraReplaceChildren,
     UltraErrorBoundary,
     ultraScope,
     type UltraElementProps,
@@ -172,6 +173,60 @@ describe('Components', () => {
             const result = UltraFragment('<div id="first"></div>', '<div id="second"></div>');
             expect((result.childNodes[0] as HTMLElement).id).toBe('first');
             expect((result.childNodes[1] as HTMLElement).id).toBe('second');
+        });
+
+    }, time_out);
+
+    suite('ultraReplaceChildren', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { window: happyWindow, document: happyWindow.document });
+        });
+
+        it('should replace a plain parent\'s children with the new children', () => {
+            const parent = document.createElement('div');
+            parent.appendChild(document.createElement('span'));
+            ultraReplaceChildren(parent as unknown as HTMLElement, '<p>new</p>');
+            expect(parent.children.length).toBe(1);
+            expect(parent.children[0]?.tagName).toBe('P');
+        });
+
+        it('should call _cleanup on outgoing UltraLightElement children', () => {
+            let cleanedUp = false;
+            const parent = document.createElement('div');
+            const $child = UltraComponent({
+                component: '<div></div>',
+                cleanup: [() => { cleanedUp = true; }]
+            });
+            parent.appendChild($child as unknown as Node);
+            ultraReplaceChildren(parent as unknown as HTMLElement, '<span>new</span>');
+            expect(cleanedUp).toBe(true);
+        });
+
+        it('should not throw when outgoing children have no _cleanup', () => {
+            const parent = document.createElement('div');
+            parent.appendChild(document.createElement('span'));
+            expect(() => ultraReplaceChildren(parent as unknown as HTMLElement, '<p>new</p>')).not.toThrow();
+        });
+
+        it('should skip null/undefined new children', () => {
+            const parent = document.createElement('div');
+            ultraReplaceChildren(parent as unknown as HTMLElement, '<p>one</p>', null, undefined, '<p>two</p>');
+            expect(parent.children.length).toBe(2);
+        });
+
+        it('should accept pre-built HTMLElement/Node new children directly', () => {
+            const parent = document.createElement('div');
+            const el = document.createElement('span');
+            ultraReplaceChildren(parent as unknown as HTMLElement, el as unknown as HTMLElement);
+            expect(parent.children[0]).toBe(el);
+        });
+
+        it('should result in an empty parent when called with no new children', () => {
+            const parent = document.createElement('div');
+            parent.appendChild(document.createElement('span'));
+            ultraReplaceChildren(parent as unknown as HTMLElement);
+            expect(parent.children.length).toBe(0);
         });
 
     }, time_out);

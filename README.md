@@ -360,6 +360,21 @@ const fragment = UltraFragment(
 );
 ```
 
+### ultraReplaceChildren(parent, ...newChildren)
+
+Replaces `parent`'s children the way native `Element.replaceChildren()` does, except any outgoing child that carries `_cleanup` (built with `UltraComponent`/`UltraActivity`/`UltraLink`, or manually assigned) has it invoked first, so event listeners, trigger subscriptions, and `onMount`-returned cleanups don't leak. Plain children without `_cleanup` are skipped, not touched.
+
+Prefer this over calling `parent.replaceChildren(...)` directly whenever `parent` may contain `UltraLightElement` children — the native DOM API gives nothing else in the library a hook into node removal, so calling `.replaceChildren()` yourself on a parent holding library-built children means those children's cleanup is silently skipped unless you call `._cleanup()` on each outgoing node yourself first (which in turn means keeping a live reference to them at swap time, since `replaceChildren` doesn't hand back what it removed).
+```javascript
+const list = document.querySelector('#list');
+
+// Safe: outgoing items' _cleanup (listeners, triggers, onMount cleanups) runs first
+ultraReplaceChildren(list, ...newItems.map(item => UltraComponent({
+  component: `<li>${item.label}</li>`,
+  eventHandler: { click: () => selectItem(item.id) }
+})));
+```
+
 ### UltraErrorBoundary(props)
 
 Wraps one or more zero-arg component factories in a try/catch, rendering `fallback` instead if any factory throws. A single factory's result is returned directly; multiple factories are combined with `UltraFragment` if they all succeed. Synchronous only — a rejected promise from an async factory is not caught.

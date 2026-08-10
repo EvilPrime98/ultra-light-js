@@ -647,6 +647,49 @@ export function UltraFragment(
 }
 
 /**
+ * Safely replaces `parent`'s children with `newChildren`, the way the native
+ * `Element.replaceChildren()` does — except any outgoing child that carries
+ * an `_cleanup` (i.e. was itself built with `UltraComponent`/`UltraActivity`/
+ * `UltraLink`, or has `_cleanup` set manually) has it invoked first, so event
+ * listeners, trigger subscriptions, and `onMount`-returned cleanups don't
+ * leak. Plain nodes without `_cleanup` are skipped, not touched.
+ *
+ * Prefer this over calling `parent.replaceChildren(...)` directly whenever
+ * `parent` may contain `UltraLightElement` children — the native API gives
+ * no hook into node removal, so nothing else in ultra-light.js can run that
+ * cleanup on your behalf.
+ * @param parent The element whose children are being replaced.
+ * @param newChildren The new children (strings, `HTMLElement`s, or `Node`s;
+ * `null`/`undefined` entries are skipped for conditional rendering).
+ * @returns
+ */
+export function ultraReplaceChildren(
+    parent: HTMLElement,
+    ...newChildren: (string | HTMLElement | Node | null | undefined)[]
+): void {
+
+    Array.from(parent.children).forEach(outgoing => {
+        if (hasCleanup(outgoing)) {
+            try {
+                outgoing._cleanup?.();
+            } catch (error) {
+                console.error('Error while cleaning up outgoing child in ultraReplaceChildren:', error);
+            }
+        }
+    });
+
+    const parsedChildren: (HTMLElement | Node)[] = [];
+    newChildren.forEach(child => {
+        if (!child) return;
+        const element = parseHTMLString(child);
+        if (element) parsedChildren.push(element);
+    });
+
+    parent.replaceChildren(...parsedChildren);
+
+}
+
+/**
  * This functional component wraps one or more component factories in a
  * try/catch, rendering `fallback` instead if any factory throws. A single
  * factory's result is returned directly; multiple factories are combined
