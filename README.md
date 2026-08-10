@@ -319,6 +319,19 @@ const Button = UltraComponent({
     defer: false // set true to defer to next animation frame
   }],
 
+  // A triggerFunction may optionally return a cleanup function, the same
+  // way onMount does. It runs before the *next* firing (tearing down
+  // whatever the previous firing set up) and, if one is still pending,
+  // on component teardown as well:
+  //
+  // trigger: [{
+  //   subscriber: subscribe,
+  //   triggerFunction: (node) => {
+  //     const id = setInterval(() => node.classList.toggle('blink'), 500);
+  //     return () => clearInterval(id);
+  //   }
+  // }],
+
   // Called immediately after mount (next animation frame)
   onMount: [(node) => node.focus()],
 

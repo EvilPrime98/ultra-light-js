@@ -39,7 +39,13 @@ export interface UltraLightElement extends HTMLElement {
 
 export interface UltraTrigger<T = HTMLElement> {
     subscriber: ((fn: (value: unknown) => void) => () => void) | ((fn: (value: unknown) => void) => () => void)[];
-    triggerFunction: (node: T) => void;
+    /**
+     * Runs on every firing. May optionally return a cleanup function — if it
+     * does, that cleanup is invoked before the *next* firing (tearing down
+     * whatever the previous firing set up) and, if one is still pending, on
+     * component teardown as well. Mirrors `onMount`'s cleanup contract.
+     */
+    triggerFunction: (node: T) => void | UltraCleanupFunction;
     /**
      * When true, the trigger callback is deferred to the next animation frame.
      * Useful when the trigger depends on DOM updates completing first.
