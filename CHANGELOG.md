@@ -1,5 +1,12 @@
 # ultra-light-js
 
+## 1.5.0
+
+### Minor Changes
+
+- 9447d49: Add `ultraReplaceChildren(parent, ...newChildren)`, a safe drop-in for native `Element.replaceChildren()` that invokes `_cleanup` on any outgoing `UltraLightElement` child before replacing, so event listeners, trigger subscriptions, and `onMount`-returned cleanups don't leak. Plain children without `_cleanup` are skipped, not touched.
+- a20b57e: `UltraTrigger.triggerFunction` may now optionally return a cleanup function, the same way `onMount` does. If returned, it runs before the _next_ firing of that trigger entry (tearing down whatever the previous firing set up) and, if one is still pending, on component teardown as well — shared across every subscriber on that trigger entry. Existing `triggerFunction`s that return nothing continue to work unchanged.
+
 ## 1.4.0
 
 ### Minor Changes
