@@ -502,9 +502,31 @@ function applyUltraElementProps(
         const { subscriber, triggerFunction, defer } = t;
         if (subscriber && triggerFunction) {
             try {
+                // Cleanup returned by a firing is torn down before the next
+                // firing runs, and (via the push below) on component teardown
+                // if one is still pending — shared across every subscriber on
+                // this trigger entry, since they all share one triggerFunction call.
+                let pendingCleanup: void | UltraCleanupFunction;
+
+                const runTrigger = (): void => {
+                    if (pendingCleanup) {
+                        try {
+                            pendingCleanup();
+                        } catch (error) {
+                            console.error('Error in trigger cleanup:', error);
+                        }
+                    }
+                    try {
+                        pendingCleanup = triggerFunction(node);
+                    } catch (error) {
+                        console.error('Error in triggerFunction:', error);
+                    }
+                };
+
                 const callback = defer
-                    ? () => requestAnimationFrame(() => triggerFunction(node))
-                    : () => triggerFunction(node);
+                    ? () => requestAnimationFrame(runTrigger)
+                    : runTrigger;
+
                 const subscribers = Array.isArray(subscriber) ? subscriber : [subscriber];
                 subscribers.forEach(sub => {
                     const unsubscribe = sub(callback);
@@ -512,6 +534,8 @@ function applyUltraElementProps(
                         cleanupFunctions.push(unsubscribe);
                     }
                 });
+
+                cleanupFunctions.push(() => pendingCleanup?.());
             } catch (error) {
                 console.error('Error in trigger:', error);
             }

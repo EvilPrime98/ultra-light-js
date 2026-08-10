@@ -493,6 +493,49 @@ describe('Components', () => {
             expect(triggerCount).toBe(2);
         });
 
+        it('should call a triggerFunction-returned cleanup before the next firing', () => {
+            const [, set, subscriber] = ultraState(0);
+            const cleanupCalls: number[] = [];
+            let firing = 0;
+            UltraComponent({
+                component: '<div></div>',
+                trigger: [{
+                    subscriber, triggerFunction: () => {
+                        const thisFiring = ++firing;
+                        return () => { cleanupCalls.push(thisFiring); };
+                    }
+                }]
+            });
+            set(1);
+            expect(cleanupCalls).toEqual([]);
+            set(2);
+            expect(cleanupCalls).toEqual([1]);
+            set(3);
+            expect(cleanupCalls).toEqual([1, 2]);
+        });
+
+        it('should call a pending triggerFunction cleanup on component _cleanup', () => {
+            const [, set, subscriber] = ultraState(0);
+            let cleanedUp = false;
+            const $el = UltraComponent({
+                component: '<div></div>',
+                trigger: [{ subscriber, triggerFunction: () => () => { cleanedUp = true; } }]
+            });
+            set(1);
+            expect(cleanedUp).toBe(false);
+            $el._cleanup?.();
+            expect(cleanedUp).toBe(true);
+        });
+
+        it('should not fail _cleanup when triggerFunction never fired (no pending cleanup)', () => {
+            const [, , subscriber] = ultraState(0);
+            const $el = UltraComponent({
+                component: '<div></div>',
+                trigger: [{ subscriber, triggerFunction: () => () => { } }]
+            });
+            expect(() => $el._cleanup?.()).not.toThrow();
+        });
+
         it('should call custom cleanup functions when _cleanup is called', () => {
             let cleanupCalled = false;
             const $el = UltraComponent({
