@@ -32,6 +32,7 @@
     "prepublishOnly": "pnpm run build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:hooks": "vitest watch --disableConsoleIntercept ./src/tests/hooks.spec.ts",
     "test:components": "vitest watch --disableConsoleIntercept ./src/tests/components.spec.ts",
     "changeset": "changeset",
