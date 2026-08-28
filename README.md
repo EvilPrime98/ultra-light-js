@@ -81,6 +81,22 @@ function Counter(){
 
 This is a work in progress. The API will change frequently. Contributions are welcome! Please open an issue or PR.
 
+### Testing & coverage
+
+```bash
+pnpm run test           # run the suite
+pnpm run test:coverage  # run the suite with a coverage report + gate
+```
+
+Coverage is enforced. `vitest.config.ts` sets a mandatory floor —
+statements 90%, branches 85%, functions 90%, lines 90% — and CI (`ci.yml`,
+`release.yml`) runs `pnpm run test:coverage`, so a change that drops below any
+threshold fails the build. Treat the floor as a ratchet: raise it as the suite
+improves, never lower it. New code paths ship with tests.
+
+`pnpm run test:coverage` writes an HTML report to `coverage/` and a
+machine-readable `coverage/coverage-summary.json` for tooling.
+
 ## API
 
 ### ultraState(initialValue)
