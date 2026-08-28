@@ -86,6 +86,7 @@ This is a work in progress. The API will change frequently. Contributions are we
 ```bash
 pnpm run test           # run the suite
 pnpm run test:coverage  # run the suite with a coverage report + gate
+pnpm run coverage       # alias for test:coverage
 ```
 
 Coverage is enforced. `vitest.config.ts` sets a mandatory floor —
