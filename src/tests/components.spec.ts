@@ -133,6 +133,77 @@ describe('Components', () => {
             expect($result).toBeInstanceOf(window.HTMLDivElement);
         });
 
+        it('should not leak content between successive calls that share the reused parse host', () => {
+            const $first = parseHTMLString(
+                '<div id="first"><span>alpha</span></div>',
+                document as unknown as Document
+            ) as HTMLElement;
+            const $second = parseHTMLString(
+                '<section id="second"><span>beta</span></section>',
+                document as unknown as Document
+            ) as HTMLElement;
+
+            expect($first).not.toBe($second);
+            expect($first.id).toBe('first');
+            expect($first.textContent).toBe('alpha');
+            expect($second.id).toBe('second');
+            expect($second.textContent).toBe('beta');
+        });
+
+        it('should return a detached node that the shared host no longer retains', () => {
+            const $el = parseHTMLString(
+                '<div id="detached"></div>',
+                document as unknown as Document
+            ) as HTMLElement;
+
+            expect($el.parentNode).toBeNull();
+
+            // A later parse must not disturb the node handed back by an earlier one.
+            parseHTMLString('<p id="later"></p>', document as unknown as Document);
+            expect($el.id).toBe('detached');
+            expect($el.isConnected).toBe(false);
+        });
+
+        it('should keep the SVG branch isolated across successive calls', () => {
+            const $circle = parseHTMLString(
+                '<circle cx="1" cy="1" r="1"/>',
+                document as unknown as Document
+            ) as Element;
+            const $rect = parseHTMLString(
+                '<rect width="2" height="2"/>',
+                document as unknown as Document
+            ) as Element;
+
+            expect($circle).not.toBe($rect);
+            expect($circle.tagName.toLowerCase()).toBe('circle');
+            expect($rect.tagName.toLowerCase()).toBe('rect');
+            expect($circle.parentNode).toBeNull();
+        });
+
+        it('should interleave HTML and SVG parses without cross-contamination', () => {
+            const $div = parseHTMLString('<div id="x"></div>', document as unknown as Document) as HTMLElement;
+            const $svg = parseHTMLString('<svg></svg>', document as unknown as Document) as Element;
+            const $p = parseHTMLString('<p id="y"></p>', document as unknown as Document) as HTMLElement;
+
+            expect($div.id).toBe('x');
+            expect($svg.tagName.toLowerCase()).toBe('svg');
+            expect($p.id).toBe('y');
+        });
+
+        it('should cache parse hosts per Document, not globally', () => {
+            const otherWindow = new Window({ url: `${HOST_PATH}/` });
+            const otherDocument = otherWindow.document;
+            otherDocument.write('<!doctype html><html><body></body></html>');
+
+            const $here = parseHTMLString('<div id="here"></div>', document as unknown as Document) as HTMLElement;
+            const $there = parseHTMLString('<div id="there"></div>', otherDocument as unknown as Document) as HTMLElement;
+
+            expect($here).toBeInstanceOf(window.HTMLDivElement);
+            expect($there).toBeInstanceOf(otherWindow.HTMLDivElement);
+            expect($here.id).toBe('here');
+            expect($there.id).toBe('there');
+        });
+
     }, time_out);
 
     // [agent-added]

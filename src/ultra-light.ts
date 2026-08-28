@@ -49,6 +49,43 @@ const SVG_EXCLUSIVE_TAGS = new Set([
 
 const TAG_REGEX = /^<([a-z][a-z0-9-]*)/i;
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/**
+ * @internal
+ * Reusable `<template>` parse host, one for each `Document`.
+ * `parseHTMLString` gives its parsed subtree to the caller. The caller adopts that
+ * subtree with `appendChild` or `replaceChildren`. The host is never kept, so each
+ * call can reuse it and rewrites only its `innerHTML`.
+ * The `WeakMap` holds one host for each `Document`. This keeps `happy-dom` and other
+ * multi-document callers on the fast path. It also lets the garbage collector remove
+ * a detached `Document` and its host together.
+ */
+const templateHosts = new WeakMap<Document, HTMLTemplateElement>();
+
+/** @internal Reusable `<svg>` parse host, one for each `Document`. The rationale is the same as {@link templateHosts}. */
+const svgHosts = new WeakMap<Document, SVGSVGElement>();
+
+/** @internal Returns the cached `<template>` parse host for `doc`, creating it on first use. */
+function getTemplateHost(doc: Document): HTMLTemplateElement {
+    let host = templateHosts.get(doc);
+    if (!host) {
+        host = doc.createElement('template');
+        templateHosts.set(doc, host);
+    }
+    return host;
+}
+
+/** @internal Returns the cached `<svg>` parse host for `doc`, creating it on first use. */
+function getSvgHost(doc: Document): SVGSVGElement {
+    let host = svgHosts.get(doc);
+    if (!host) {
+        host = doc.createElementNS(SVG_NS, 'svg');
+        svgHosts.set(doc, host);
+    }
+    return host;
+}
+
 export function parseHTMLString(
     htmlString: string | HTMLElement | Node,
     document?: Document
@@ -64,13 +101,18 @@ export function parseHTMLString(
     if (!tagMatch) return null;
     const tag = (tagMatch[1] as string).toLowerCase();
     if (SVG_EXCLUSIVE_TAGS.has(tag)) {
-        const temp = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        temp.innerHTML = trimmed;
-        return temp.firstElementChild;
+        const svgHost = getSvgHost(document);
+        svgHost.innerHTML = trimmed;
+        const svgNode = svgHost.firstElementChild;
+        // Detach the parsed subtree. This stops the shared host from holding it until the next call.
+        svgHost.innerHTML = '';
+        return svgNode;
     }
-    const template = document.createElement('template');
-    template.innerHTML = trimmed;
-    return template.content.firstElementChild;
+    const templateHost = getTemplateHost(document);
+    templateHost.innerHTML = trimmed;
+    const node = templateHost.content.firstElementChild;
+    templateHost.innerHTML = '';
+    return node;
 }
 
 function stableHash(str: string): string {
