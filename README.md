@@ -368,6 +368,13 @@ const Button = UltraComponent({
 });
 ```
 
+**Whitespace handling.** HTML strings passed to `component` / `children` are only
+trimmed at the ends before parsing; whitespace inside the markup is left to the
+browser's HTML parser. Insignificant whitespace between tags is dropped as usual,
+and whitespace-significant content (`<pre>`, `<textarea>`) is preserved exactly as
+authored. Earlier versions collapsed runs of whitespace and stripped newlines
+outright, which could weld adjacent words together — that no longer happens.
+
 ### UltraActivity(props)
 
 Shows or hides an element based on state. Shares the same props as `UltraComponent`, plus `mode` and `type`.
