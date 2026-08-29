@@ -97,6 +97,18 @@ improves, never lower it. New code paths ship with tests.
 `pnpm run test:coverage` writes an HTML report to `coverage/` and a
 machine-readable `coverage/coverage-summary.json` for tooling.
 
+### Benchmarks
+
+```bash
+pnpm run bench          # run the Vitest bench suite once
+```
+
+`src/tests/parse-html-string.bench.ts` measures `parseHTMLString`, the
+string-to-DOM primitive every factory funnels through. It runs under
+`happy-dom`, so the numbers are only meaningful as a **relative** before/after
+comparison of JS-side overhead — not as browser parity. CI runs `pnpm run
+bench` as a non-blocking job (`ci.yml`); a bench delta never fails a build.
+
 ## API
 
 ### ultraState(initialValue)
