@@ -204,6 +204,69 @@ describe('Components', () => {
             expect($there.id).toBe('there');
         });
 
+        // issue #33 — parser must not collapse or strip significant whitespace
+        it('should preserve verbatim whitespace inside <pre>', () => {
+            const $pre = parseHTMLString(
+                '<pre>alpha\n    beta\n        gamma</pre>',
+                document as unknown as Document
+            ) as HTMLElement;
+            expect($pre).toBeInstanceOf(window.HTMLPreElement);
+            expect($pre.textContent).toBe('alpha\n    beta\n        gamma');
+        });
+
+        it('should preserve newlines in a <textarea> default value', () => {
+            const $textarea = parseHTMLString(
+                '<textarea>line one\nline two\nline three</textarea>',
+                document as unknown as Document
+            ) as HTMLTextAreaElement;
+            expect($textarea).toBeInstanceOf(window.HTMLTextAreaElement);
+            expect($textarea.value).toBe('line one\nline two\nline three');
+        });
+
+        it('should keep word boundaries in a text node that contains a newline', () => {
+            const $p = parseHTMLString(
+                '<p>foo\nbar</p>',
+                document as unknown as Document
+            ) as HTMLElement;
+            // Old normalization stripped the \n with no replacement, welding this to "foobar".
+            expect($p.textContent).toBe('foo\nbar');
+            expect($p.textContent).not.toBe('foobar');
+        });
+
+        it('should still tolerate leading and trailing whitespace around the root tag', () => {
+            const $div = parseHTMLString(
+                '\n\n        <div id="lead"></div>   \n',
+                document as unknown as Document
+            ) as HTMLElement;
+            expect($div).toBeInstanceOf(window.HTMLDivElement);
+            expect($div.id).toBe('lead');
+        });
+
+        it('should parse a multi-line component string to the same root element as before', () => {
+            const $div = parseHTMLString(
+                `<div id="foo">
+                    <p id="bar">Hello, world!</p>
+                </div>`,
+                document as unknown as Document
+            ) as HTMLElement;
+            expect($div).toBeInstanceOf(window.HTMLDivElement);
+            expect($div.id).toBe('foo');
+            const $child = $div.children[0];
+            expect($child).toBeInstanceOf(window.HTMLParagraphElement);
+            expect($child?.id).toBe('bar');
+            expect($child?.textContent).toBe('Hello, world!');
+        });
+
+        it('should leave the SVG branch unaffected by the whitespace change', () => {
+            const $svg = parseHTMLString(
+                '<svg>\n    <circle cx="1" cy="1" r="1"/>\n</svg>',
+                document as unknown as Document
+            ) as Element;
+            expect($svg).toBeInstanceOf(window.SVGElement);
+            expect($svg.tagName.toLowerCase()).toBe('svg');
+            expect($svg.querySelector('circle')).not.toBeNull();
+        });
+
     }, time_out);
 
     // [agent-added]

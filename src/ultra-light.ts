@@ -91,11 +91,13 @@ export function parseHTMLString(
     document?: Document
 ): HTMLElement | Node | null {
     if (!document) document = window.document;
-    if (typeof htmlString !== 'string') return htmlString;    
-    const trimmed = htmlString
-    .trim()
-    .replace(/\n/g, '')
-    .replace(/\s{2,}/g, ' ');
+    if (typeof htmlString !== 'string') return htmlString;
+    // Trim only. TAG_REGEX is anchored `^<`, so it still matches a source string
+    // that has leading whitespace. The native parser handles whitespace inside the
+    // markup: it drops the insignificant kind and keeps the significant kind in
+    // `<pre>` and `<textarea>`. The old code collapsed whitespace here, which
+    // welded adjacent words together and removed authored indentation.
+    const trimmed = htmlString.trim();
     if (!trimmed) return null;
     const tagMatch = trimmed.match(TAG_REGEX);
     if (!tagMatch) return null;
