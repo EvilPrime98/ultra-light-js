@@ -27,3 +27,21 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run build
       - run: pnpm run test:coverage
+
+  bench:
+    runs-on: ubuntu-latest
+    # Informational only. happy-dom bench numbers are relative, not absolute, and
+    # noisy on shared CI runners. Do not gate a merge on them.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run bench

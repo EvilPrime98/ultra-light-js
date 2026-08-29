@@ -33,6 +33,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench --run",
     "test:hooks": "vitest watch --disableConsoleIntercept ./src/tests/hooks.spec.ts",
     "test:components": "vitest watch --disableConsoleIntercept ./src/tests/components.spec.ts",
     "changeset": "changeset",
