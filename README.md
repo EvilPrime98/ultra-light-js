@@ -434,6 +434,43 @@ Inserts a component directly after a given application root element, outside of 
 ultraPortal('#app', '<div class="modal">Hello from a portal</div>');
 ```
 
+## Rendering lists
+
+The library is string-template based with no virtual DOM. The obvious way to
+render a list — mapping each item to a `UltraComponent` built from an
+interpolated markup string — routes **every row through the HTML parser**:
+N rows means N full `parseHTMLString` calls plus N template-string
+allocations.
+
+For anything longer than a handful of rows, or a list that re-renders on state
+changes, parse the row markup **once** and `cloneNode(true)` per row instead:
+
+```javascript
+import { parseHTMLString, ultraReplaceChildren } from 'ultra-light-js';
+
+// Parsed once, at module load.
+const rowTemplate = parseHTMLString('<li class="row"></li>');
+
+function renderList(listEl, data) {
+  const rows = data.map(item => {
+    const row = rowTemplate.cloneNode(true);
+    row.textContent = item.label;
+    return row;
+  });
+  ultraReplaceChildren(listEl, ...rows);
+}
+```
+
+`cloneNode(true)` is a structural copy — it skips HTML parsing entirely for
+rows 2..N. The trade-off is that per-row content (text, attributes, event
+listeners) is set imperatively after the clone rather than interpolated into
+the markup, so this pattern earns its place on hot or long lists and is
+usually not worth it for a short static one.
+
+`parseHTMLString` already reuses a single `<template>` parse host per document,
+so the naive pattern does not allocate a host per call — but it still runs the
+full parser every call, which cloning avoids.
+
 ## Examples
 
 ### Complete Todo App
