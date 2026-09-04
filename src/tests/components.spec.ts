@@ -15,7 +15,7 @@ import {
     ultraScope,
     type UltraElementProps,
     type UltraErrorBoundaryProps
-} from '../ultra-light';
+} from '../ultra-light.js';
 
 const time_out = 1 * 1000;
 const HOST_PATH = 'about:';

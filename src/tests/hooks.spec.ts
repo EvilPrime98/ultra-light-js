@@ -12,7 +12,7 @@ import {
     ultraQueryParams,
     ultraScope,
     type IUltraCompStateStateful
-} from '../ultra-light';
+} from '../ultra-light.js';
 
 const time_out = 1 * 1000;
 

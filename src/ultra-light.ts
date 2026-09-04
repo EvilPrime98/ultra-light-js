@@ -16,7 +16,7 @@ import {
     type UltraElementProps,
     type UltraErrorBoundaryProps,
     CSSProperties
-} from './types';
+} from './types.js';
 
 export type {
     UltraStateReturn,

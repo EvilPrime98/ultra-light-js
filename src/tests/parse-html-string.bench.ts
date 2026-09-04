@@ -1,6 +1,6 @@
 import { bench, describe } from 'vitest';
 import { Window } from 'happy-dom';
-import { parseHTMLString } from '../ultra-light';
+import { parseHTMLString } from '../ultra-light.js';
 
 // happy-dom is not a real browser. This suite measures the JS-side overhead of
 // parseHTMLString only. Use the numbers for a relative before/after comparison.
