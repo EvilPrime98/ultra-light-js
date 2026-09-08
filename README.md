@@ -556,6 +556,56 @@ document.body.appendChild(
 ```
 
 
+## Server-side prerendering (experimental)
+
+Prerender a component tree to HTML at build time for a faster first paint and
+crawlable markup. Two pieces:
+
+- **`renderToString`** (`ultra-light-js/ssr`) — runs a component factory in Node
+  and returns its markup plus any scoped CSS it registered.
+- **`ultraSSR`** (`ultra-light-js/vite`) — a Vite plugin that, on `vite build`,
+  writes `index.ssr.html` (your template with the markup inlined into `#app` and
+  the CSS inlined into `<head>`) and `entry.hydrate.js` (a small module that
+  loads the normal client bundle).
+
+Both are opt-in and pull in peer packages only when used: install `happy-dom`
+(and `vite` for the plugin) alongside the framework.
+
+```bash
+pnpm add -D happy-dom vite
+```
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite';
+import { ultraSSR } from 'ultra-light-js/vite';
+
+export default defineConfig({
+  plugins: [ultraSSR({ entry: 'src/app.ts' })] // src/app.ts default-exports the root factory
+});
+```
+
+```ts
+// direct use
+import { renderToString } from 'ultra-light-js/ssr';
+import App from './src/app.js';
+
+const { html, css } = renderToString(App);
+```
+
+### Limitations
+
+- The client still renders `#app` from scratch on boot; the server markup is
+  replaced, not adopted in place. Adopting the existing DOM is a later addition.
+- `renderToString` installs the DOM globals it needs for the duration of the
+  call, so two renders must not overlap in one process.
+- `onMount` callbacks and deferred triggers do not run on the server — the output
+  is the initial synchronous render. Guard browser-only code in a factory with
+  `typeof window !== 'undefined'`.
+- One entry / one HTML file. The plugin `entry` module must be plain importable
+  ESM (no Vite-only import syntax).
+
+
 ## License
 
 GPL-3.0

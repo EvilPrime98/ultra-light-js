@@ -16,6 +16,14 @@
     ".": {
       "types": "./dist/ultra-light.d.ts",
       "import": "./dist/ultra-light.js"
+    },
+    "./ssr": {
+      "types": "./dist/ssr.d.ts",
+      "import": "./dist/ssr.js"
+    },
+    "./vite": {
+      "types": "./dist/vite/plugin.d.ts",
+      "import": "./dist/vite/plugin.js"
     }
   },
   "files": [
@@ -77,5 +85,17 @@
   },
   "dependencies": {
     "csstype": "^3.2.3"
+  },
+  "peerDependencies": {
+    "happy-dom": ">=15",
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "happy-dom": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   }
 }
