@@ -375,6 +375,27 @@ and whitespace-significant content (`<pre>`, `<textarea>`) is preserved exactly 
 authored. Earlier versions collapsed runs of whitespace and stripped newlines
 outright, which could weld adjacent words together — that no longer happens.
 
+**Typed event handlers.** Each key of `eventHandler` receives the event class that
+`HTMLElementEventMap` associates with it (`click` gets a `PointerEvent`, `keydown` a
+`KeyboardEvent`, ...), and `e.currentTarget` is narrowed to the element the component
+renders. When `component` is an HTML string literal, the element type is read from its
+first tag, so no annotation is needed:
+
+```typescript
+UltraComponent({
+  component: '<input type="text" />',
+  eventHandler: { input: (e) => setText(e.currentTarget.value) }
+});
+```
+
+`component` given as an element uses that element's own type, `UltraActivity` behaves
+the same way, and `UltraLink` handlers see an `HTMLAnchorElement`. Unknown tags and
+strings that are not literals fall back to `HTMLElement`; pass the element type
+explicitly to override it, as in `UltraComponent<string, HTMLInputElement>({ ... })`.
+`e.target` is intentionally left as `EventTarget | null`, because for bubbling events it
+can be a descendant rather than the element the handler is attached to. Handlers written
+against the plain `Event` type and `EventListenerObject`s keep working unchanged.
+
 ### UltraActivity(props)
 
 Shows or hides an element based on state. Shares the same props as `UltraComponent`, plus `mode` and `type`.
@@ -524,7 +545,7 @@ function TodoApp(){
 
       UltraComponent({
         component: '<input type="text" placeholder="New task..." />',
-        eventHandler: { input: (e) => setInput(e.target.value) },
+        eventHandler: { input: (e) => setInput(e.currentTarget.value) },
         trigger: [{ subscriber: subscribeInput, triggerFunction: onInputChange }]
       }),
 

@@ -14,6 +14,7 @@ import {
     UltraErrorBoundary,
     ultraScope,
     type UltraElementProps,
+    type UltraEventHandlers,
     type UltraErrorBoundaryProps
 } from '../ultra-light.js';
 
@@ -1573,12 +1574,185 @@ describe('Components', () => {
 
         it('UltraLink accepts every UltraElementProps field with the same type (issue #12 gap)', () => {
             type Props = Parameters<typeof UltraLink>[0];
-            expectTypeOf<Props['eventHandler']>().toEqualTypeOf<UltraElementProps['eventHandler']>();
+            expectTypeOf<Props['eventHandler']>().toEqualTypeOf<UltraElementProps<HTMLAnchorElement>['eventHandler']>();
             expectTypeOf<Props['attributes']>().toEqualTypeOf<UltraElementProps['attributes']>();
             expectTypeOf<Props['styles']>().toEqualTypeOf<UltraElementProps['styles']>();
             expectTypeOf<Props['trigger']>().toEqualTypeOf<UltraElementProps['trigger']>();
             expectTypeOf<Props['onMount']>().toEqualTypeOf<UltraElementProps['onMount']>();
             expectTypeOf<Props['cleanup']>().toEqualTypeOf<UltraElementProps['cleanup']>();
+        });
+
+    }, time_out);
+
+    suite('typed eventHandler (issue #50)', () => {
+
+        beforeAll(() => {
+            Object.assign(globalThis, { window: happyWindow, document: happyWindow.document });
+        });
+
+        it('should narrow currentTarget to the element parsed from an HTML string', () => {
+            UltraComponent({
+                component: '<input type="text" />',
+                eventHandler: {
+                    input: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLInputElement>();
+                        expectTypeOf(e.currentTarget.value).toEqualTypeOf<string>();
+                    },
+                    change: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLInputElement>();
+                    }
+                }
+            });
+        });
+
+        it('should narrow the event class by event name', () => {
+            UltraComponent({
+                component: '<button></button>',
+                eventHandler: {
+                    click: (e) => {
+                        expectTypeOf(e).toExtend<PointerEvent>();
+                        expectTypeOf(e.currentTarget).toExtend<HTMLButtonElement>();
+                    },
+                    keydown: (e) => {
+                        expectTypeOf(e.key).toEqualTypeOf<string>();
+                    },
+                    mouseenter: (e) => {
+                        expectTypeOf(e).toExtend<MouseEvent>();
+                    }
+                }
+            });
+        });
+
+        it('should tolerate leading whitespace and uppercase tag names', () => {
+            UltraComponent({
+                component: '  <BUTTON class="x">hi</BUTTON>',
+                eventHandler: {
+                    click: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLButtonElement>();
+                    }
+                }
+            });
+        });
+
+        it('should fall back to HTMLElement for unknown tags and non-literal strings', () => {
+            const dynamicHtml: string = '<input />';
+            UltraComponent({
+                component: '<my-widget></my-widget>',
+                eventHandler: {
+                    click: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLElement>();
+                        expectTypeOf(e.currentTarget).not.toExtend<HTMLInputElement>();
+                    }
+                }
+            });
+            UltraComponent({
+                component: dynamicHtml,
+                eventHandler: {
+                    click: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLElement>();
+                        expectTypeOf(e.currentTarget).not.toExtend<HTMLInputElement>();
+                    }
+                }
+            });
+        });
+
+        it('should narrow currentTarget to the type of an element passed as component', () => {
+            const input = document.createElement('input') as unknown as HTMLInputElement;
+            UltraComponent({
+                component: input,
+                eventHandler: {
+                    input: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLInputElement>();
+                    }
+                }
+            });
+        });
+
+        it('should accept an explicit element type for a component string that is not a literal', () => {
+            const html: string = '<input />';
+            UltraComponent<string, HTMLInputElement>({
+                component: html,
+                eventHandler: {
+                    input: (e) => {
+                        expectTypeOf(e.currentTarget.value).toEqualTypeOf<string>();
+                    }
+                }
+            });
+            UltraActivity<string, HTMLInputElement>({
+                component: html,
+                mode: { state: () => true, subscriber: () => () => { } },
+                eventHandler: {
+                    input: (e) => {
+                        expectTypeOf(e.currentTarget.value).toEqualTypeOf<string>();
+                    }
+                }
+            });
+        });
+
+        it('should narrow currentTarget for UltraActivity', () => {
+            UltraActivity({
+                component: '<select></select>',
+                mode: { state: () => true, subscriber: () => () => { } },
+                eventHandler: {
+                    change: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLSelectElement>();
+                    }
+                }
+            });
+        });
+
+        it('should narrow currentTarget to HTMLAnchorElement for UltraLink', () => {
+            UltraLink({
+                href: '/somewhere',
+                eventHandler: {
+                    click: (e) => {
+                        expectTypeOf(e.currentTarget).toExtend<HTMLAnchorElement>();
+                    }
+                }
+            });
+        });
+
+        it('should keep accepting handlers written against the plain Event type', () => {
+            const listener = (e: Event): void => { void e; };
+            const listenerObject: EventListenerObject = { handleEvent: (e: Event): void => { void e; } };
+            const $el = UltraComponent({
+                component: '<div></div>',
+                eventHandler: { click: listener, mouseenter: listenerObject }
+            });
+            expect($el).toBeDefined();
+        });
+
+        it('should not expose unknown event names and should leave target un-narrowed', () => {
+            expectTypeOf<UltraEventHandlers>().not.toHaveProperty('notAnEvent');
+            expectTypeOf<UltraEventHandlers>().toHaveProperty('input');
+            UltraComponent({
+                component: '<input />',
+                eventHandler: {
+                    input: (e) => {
+                        expectTypeOf(e.target).toEqualTypeOf<EventTarget | null>();
+                    }
+                }
+            });
+        });
+
+        it('should expose the parsed element as currentTarget at runtime', () => {
+            let seen: EventTarget | null = null;
+            const $el = UltraComponent({
+                component: '<input type="text" />',
+                eventHandler: { input: (e) => { seen = e.currentTarget; } }
+            });
+            $el.dispatchEvent(new happyWindow.Event('input') as unknown as Event);
+            expect(seen).toBe($el);
+        });
+
+        it('should invoke handleEvent on listener objects', () => {
+            const received: string[] = [];
+            const $el = UltraComponent({
+                component: '<button></button>',
+                eventHandler: { click: { handleEvent: (e) => { received.push(e.type); } } }
+            });
+            $el.click();
+            expect(received).toEqual(['click']);
         });
 
     }, time_out);
