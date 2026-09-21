@@ -14,6 +14,11 @@ import {
     type IUltraCompStateStateful,
     type AllHTMLAttributes,
     type UltraElementProps,
+    type UltraElementOf,
+    type UltraElementFromHTML,
+    type UltraEventHandlers,
+    type UltraEventListener,
+    type UltraTypedEvent,
     type UltraErrorBoundaryProps,
     CSSProperties
 } from './types.js';
@@ -30,6 +35,11 @@ export type {
     IUltraCompStateStateful,
     UltraRenderableElement,
     UltraElementProps,
+    UltraElementOf,
+    UltraElementFromHTML,
+    UltraEventHandlers,
+    UltraEventListener,
+    UltraTypedEvent,
     UltraErrorBoundaryProps
 }
 
@@ -481,7 +491,7 @@ function applyUltraElementProps(
         trigger = [],
         onMount = [],
         cleanup = []
-    }: UltraElementProps,
+    }: UltraElementProps<never>,
     cleanupFunctions: UltraCleanupFunction[]
 ): void {
 
@@ -491,7 +501,7 @@ function applyUltraElementProps(
     });
 
     (Object.keys(eventHandler) as (keyof HTMLElementEventMap)[]).forEach((event: keyof HTMLElementEventMap) => {
-        const handler = eventHandler[event];
+        const handler = eventHandler[event] as EventListenerOrEventListenerObject | undefined;
         if (handler) {
             node.addEventListener(event, handler);
             cleanupFunctions.push(() => node.removeEventListener(event, handler));
@@ -624,7 +634,7 @@ export function UltraLink({
      * This is useful for transitioning between pages with animations.
      */
     viewTransition?: boolean;
-} & UltraElementProps): UltraLightElement {
+} & UltraElementProps<HTMLAnchorElement>): UltraLightElement {
     if (!href) {
         console.warn('UltraLink: href is required');
     }
@@ -790,7 +800,10 @@ export function UltraErrorBoundary({
  * @param props Object containing `component` plus the shared {@link UltraElementProps} (eventHandler, attributes, styles, className, children, trigger, onMount, cleanup).
  * @returns
  */
-export function UltraComponent({
+export function UltraComponent<
+    C extends UltraRenderableElement = UltraRenderableElement,
+    T extends HTMLElement = UltraElementOf<C>
+>({
     component,
     eventHandler = {},
     attributes = {},
@@ -804,8 +817,8 @@ export function UltraComponent({
     /**
      * The parent component to be rendered. It accepts children in plain HTML.
      */
-    component: UltraRenderableElement;
-} & UltraElementProps): UltraLightElement {
+    component: C;
+} & UltraElementProps<T>): UltraLightElement {
 
     const node = parseHTMLString(component) as UltraLightElement;
 
@@ -858,7 +871,10 @@ export function UltraComponent({
  * @param props Object containing `component`, `mode`, `type`, plus the shared {@link UltraElementProps} (eventHandler, attributes, styles, className, children, trigger, onMount, cleanup).
  * @returns
  */
-export function UltraActivity({
+export function UltraActivity<
+    C extends UltraRenderableElement | UltraLightElement = UltraRenderableElement,
+    T extends HTMLElement = UltraElementOf<C>
+>({
     component,
     eventHandler = {},
     attributes = {},
@@ -874,7 +890,7 @@ export function UltraActivity({
     /**
      * The parent component to be rendered. It accepts children in plain HTML.
      */
-    component: UltraRenderableElement | UltraLightElement;
+    component: C;
     /**
      * Object containing the state and subscriber functions to control visibility.
      */
@@ -893,7 +909,7 @@ export function UltraActivity({
      * Type of activity (display or visibility). Default is 'display'.
      */
     type?: 'display' | 'visibility';
-} & UltraElementProps): UltraLightElement {
+} & UltraElementProps<T>): UltraLightElement {
 
     const supportedTypes = ['display', 'visibility'];
 

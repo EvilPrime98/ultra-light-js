@@ -1,0 +1,5 @@
+---
+"ultra-light-js": minor
+---
+
+Typed `eventHandler` props. Each handler now receives the event class that `HTMLElementEventMap` associates with its key (`click` gets a `PointerEvent`, `keydown` a `KeyboardEvent`, ...), and `e.currentTarget` is narrowed to the rendered element, so `e.currentTarget.value` type-checks without an assertion. For `UltraComponent` and `UltraActivity` the element type is inferred from `component` (the first tag of an HTML string literal, or the type of a passed element), with `HTMLElement` as the fallback and `UltraComponent<string, HTMLInputElement>(...)` as an explicit override; `UltraLink` handlers see an `HTMLAnchorElement`. `UltraElementProps` is now generic (`UltraElementProps<T extends HTMLElement = HTMLElement>`) and the new `UltraEventHandlers`, `UltraEventListener`, `UltraTypedEvent`, `UltraElementOf` and `UltraElementFromHTML` types are exported. Handlers written against the plain `Event` type and `EventListenerObject`s remain assignable, so existing code keeps compiling. `e.target` stays `EventTarget | null`.

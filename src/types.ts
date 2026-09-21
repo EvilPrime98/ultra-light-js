@@ -106,6 +106,45 @@ export type AllHTMLAttributes = {
 
 export type CSSProperties = Properties<string | number>;
 
+export type UltraTypedEvent<E extends Event, T extends EventTarget> = E & { readonly currentTarget: T };
+
+export type UltraEventListener<E extends Event, T extends EventTarget> =
+    | ((e: UltraTypedEvent<E, T>) => void)
+    | { handleEvent(e: UltraTypedEvent<E, T>): void };
+
+export type UltraEventHandlers<T extends HTMLElement = HTMLElement> = {
+    [K in keyof HTMLElementEventMap]?: UltraEventListener<HTMLElementEventMap[K], T>;
+};
+
+type HTMLWhitespaceOrTagEnd = ' ' | '\n' | '\t' | '\r' | '>' | '/';
+
+type TrimHTMLStart<S extends string> = S extends `${' ' | '\n' | '\t' | '\r'}${infer Rest}`
+    ? TrimHTMLStart<Rest>
+    : S;
+
+type HTMLTagName<S extends string, Name extends string = ''> =
+    S extends `${infer Char}${infer Rest}`
+        ? Char extends HTMLWhitespaceOrTagEnd
+            ? Name
+            : HTMLTagName<Rest, `${Name}${Char}`>
+        : Name;
+
+export type UltraElementFromHTML<S extends string> =
+    TrimHTMLStart<S> extends `<${infer Source}`
+        ? Lowercase<HTMLTagName<Source>> extends infer Tag
+            ? Tag extends keyof HTMLElementTagNameMap
+                ? HTMLElementTagNameMap[Tag]
+                : HTMLElement
+            : HTMLElement
+        : HTMLElement;
+
+export type UltraElementOf<C> =
+    C extends string
+        ? UltraElementFromHTML<C>
+        : C extends HTMLElement
+            ? C
+            : HTMLElement;
+
 /**
  * Shared prop shape for ultra-light.js's custom elements (`UltraComponent`,
  * `UltraActivity`, `UltraLink`, and any custom ultraelement built on the same
@@ -113,11 +152,11 @@ export type CSSProperties = Properties<string | number>;
  * identity (e.g. `component` or `href`): event handlers, HTML attributes, styles,
  * class names, children, triggers, mount callbacks, and cleanup functions.
  */
-export interface UltraElementProps {
+export interface UltraElementProps<T extends HTMLElement = HTMLElement> {
     /**
      * Object containing the event handlers.
      */
-    eventHandler?: Partial<Record<keyof HTMLElementEventMap, EventListenerOrEventListenerObject>>;
+    eventHandler?: UltraEventHandlers<T>;
     /**
      * Object containing the HTML attributes.
      */
