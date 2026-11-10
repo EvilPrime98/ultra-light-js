@@ -1,0 +1,10 @@
+{
+  "repos": [
+    "EvilPrime98/mySkills"
+  ],
+  "skills": {
+    "pr-doctor": "EvilPrime98/mySkills",
+    "torvals-comments": "EvilPrime98/mySkills"
+  },
+  "isolate": false
+}
