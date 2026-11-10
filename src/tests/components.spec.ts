@@ -30,6 +30,70 @@ describe('Components', () => {
     const nextFrame = (): Promise<void> =>
         new Promise(resolve => happyWindow.requestAnimationFrame(() => resolve()));
 
+    suite('parseHTMLString template cache', () => {
+
+        const doc = document as unknown as Document;
+
+        it('returns distinct nodes for the same markup', () => {
+            const a = parseHTMLString('<ul><li>x</li></ul>', doc) as HTMLElement;
+            const b = parseHTMLString('<ul><li>x</li></ul>', doc) as HTMLElement;
+            expect(a).not.toBe(b);
+            expect(a.outerHTML).toBe(b.outerHTML);
+        });
+
+        it('does not leak mutations into later results', () => {
+            const a = parseHTMLString('<p class="k">t</p>', doc) as HTMLElement;
+            a.className = 'changed';
+            a.appendChild(doc.createElement('b'));
+            const b = parseHTMLString('<p class="k">t</p>', doc) as HTMLElement;
+            expect(b.outerHTML).toBe('<p class="k">t</p>');
+        });
+
+        it('parses table parts through the cache like the native parser', () => {
+            parseHTMLString('<tr></tr>', doc);
+            const tr = parseHTMLString('<tr></tr>', doc) as HTMLElement;
+            expect(tr.tagName.toLowerCase()).toBe('tr');
+        });
+
+        it.each([
+            '<input value="a">',
+            '<textarea>t</textarea>',
+            '<div id="x"></div>',
+            '<button onclick="f()"></button>',
+            '<my-el></my-el>',
+        ])('bypasses the cache for %s', markup => {
+            const first = parseHTMLString(markup, doc) as HTMLElement;
+            const second = parseHTMLString(markup, doc) as HTMLElement;
+            expect(first).not.toBe(second);
+            expect(first.outerHTML).toBe(second.outerHTML);
+        });
+
+        it('skips caching for long markup but still parses it', () => {
+            const long = `<div>${'x'.repeat(300)}</div>`;
+            const a = parseHTMLString(long, doc) as HTMLElement;
+            const b = parseHTMLString(long, doc) as HTMLElement;
+            expect(a).not.toBe(b);
+            expect(a.textContent).toHaveLength(300);
+        });
+
+        it('evicts old entries past the bound and refreshes recent ones', () => {
+            for (let i = 0; i < 200; i++) parseHTMLString(`<i class="e${i}"></i>`, doc);
+            const again = parseHTMLString('<i class="e0"></i>', doc) as HTMLElement;
+            expect(again.outerHTML).toBe('<i class="e0"></i>');
+            const recent = parseHTMLString('<i class="e199"></i>', doc) as HTMLElement;
+            expect(recent.outerHTML).toBe('<i class="e199"></i>');
+        });
+
+        it('isolates the cache per document', () => {
+            const other = new Window().document as unknown as Document;
+            const a = parseHTMLString('<span>iso</span>', doc) as HTMLElement;
+            const b = parseHTMLString('<span>iso</span>', other) as HTMLElement;
+            expect(a.ownerDocument).toBe(doc);
+            expect(b.ownerDocument).toBe(other);
+        });
+
+    }, time_out);
+
     suite('parseHTMLString', () => {
 
         it('should return (null) from an empty HTML string', () => {
