@@ -38,7 +38,8 @@
     "test:components": "vitest watch --disableConsoleIntercept ./src/tests/components.spec.ts",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "size": "node scripts/check-size.mjs"
   },
   "keywords": [
     "framework",
@@ -77,5 +78,8 @@
   },
   "dependencies": {
     "csstype": "^3.2.3"
+  },
+  "sizeBudget": {
+    "dist/ultra-light.global.js": 5000
   }
 }
