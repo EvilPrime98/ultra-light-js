@@ -1091,6 +1091,36 @@ describe('hooks', () => {
             expect(count).toBe(1);
         });
 
+        it('should memoize frozen objects by identity and append one text node', () => {
+            const css = Object.freeze({ frozenbox: Object.freeze({ color: 'teal' }) });
+            const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement | null;
+            const before = styleEl?.childNodes.length ?? 0;
+            const first = ultraStyles2(css, document);
+            const stringify = vi.spyOn(JSON, 'stringify');
+            const second = ultraStyles2(css, document);
+            expect(stringify).not.toHaveBeenCalled();
+            stringify.mockRestore();
+            expect(second).toBe(first);
+            const after = (document.getElementById('ultra-styles') as HTMLStyleElement).childNodes.length;
+            expect(after - before).toBe(1);
+        });
+
+        it('should not return stale classes when a mutable object is mutated', () => {
+            const css: Record<string, Record<string, string>> = { mutable: { color: 'red' } };
+            const first = ultraStyles2(css, document);
+            css.mutable = { color: 'blue' };
+            const second = ultraStyles2(css, document);
+            expect(second.mutable).not.toBe(first.mutable);
+        });
+
+        it('should give each document its own style element for a frozen object', () => {
+            const css = Object.freeze({ multidoc: Object.freeze({ color: 'navy' }) });
+            const otherDoc = new Window().document as unknown as Document;
+            ultraStyles2(css, document);
+            ultraStyles2(css, otherDoc);
+            expect(otherDoc.getElementById('ultra-styles')?.tagName.toLowerCase()).toBe('style');
+        });
+
         it('should not include the original unscoped class name in the injected CSS', () => {
             const styles = ultraStyles2({ original: { color: 'orange' } }, document);
             const styleEl = document.getElementById('ultra-styles') as HTMLStyleElement;

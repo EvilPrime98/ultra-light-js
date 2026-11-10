@@ -66,6 +66,22 @@ const templateHosts = new WeakMap<Document, HTMLTemplateElement>();
 /** @internal Reusable `<svg>` parse host, one for each `Document`. The rationale is the same as {@link templateHosts}. */
 const svgHosts = new WeakMap<Document, SVGSVGElement>();
 
+/**
+ * @internal
+ * Bounded LRU of pristine parsed nodes, per `Document`, keyed by trimmed markup.
+ * Repeated markup (list rows) is cloned instead of re-parsed. Entries are never
+ * handed out directly, so mutating a returned node cannot affect later calls.
+ */
+const templateCaches = new WeakMap<Document, Map<string, Element>>();
+const TEMPLATE_CACHE_MAX_ENTRIES = 64;
+const TEMPLATE_CACHE_MAX_LENGTH = 256;
+/**
+ * @internal
+ * Markup that can carry per-instance state or special parsing semantics is
+ * never cached: form controls, scripts, ids, inline handlers, custom elements.
+ */
+const UNCACHEABLE_MARKUP = /<(?:script|input|textarea|select|form|template)\b|<[a-z][a-z0-9]*-|\bid\s*=|\bon[a-z]+\s*=/i;
+
 /** @internal Returns the cached `<template>` parse host for `doc`, creating it on first use. */
 function getTemplateHost(doc: Document): HTMLTemplateElement {
     let host = templateHosts.get(doc);
@@ -110,10 +126,27 @@ export function parseHTMLString(
         svgHost.innerHTML = '';
         return svgNode;
     }
+    const cacheable = trimmed.length <= TEMPLATE_CACHE_MAX_LENGTH && !UNCACHEABLE_MARKUP.test(trimmed);
+    let cache: Map<string, Element> | undefined;
+    if (cacheable) {
+        cache = templateCaches.get(document);
+        if (!cache) templateCaches.set(document, cache = new Map<string, Element>());
+        const hit = cache.get(trimmed);
+        if (hit) {
+            // Re-insert to mark as most recently used.
+            cache.delete(trimmed);
+            cache.set(trimmed, hit);
+            return hit.cloneNode(true) as HTMLElement;
+        }
+    }
     const templateHost = getTemplateHost(document);
     templateHost.innerHTML = trimmed;
     const node = templateHost.content.firstElementChild;
     templateHost.innerHTML = '';
+    if (cache && node) {
+        cache.set(trimmed, node.cloneNode(true) as Element);
+        if (cache.size > TEMPLATE_CACHE_MAX_ENTRIES) cache.delete(cache.keys().next().value!);
+    }
     return node;
 }
 
@@ -1212,6 +1245,15 @@ function isValidCssObject(
     );
 }
 
+/**
+ * Identity memo for `ultraStyles2`, keyed per Document then per object, so a
+ * repeated call with the same object skips `JSON.stringify` + hashing.
+ * Only frozen objects are memoized: a mutable object could change between
+ * calls and would otherwise return stale class names.
+ * @internal
+ */
+const styleIdentityCache = new WeakMap<Document, WeakMap<object, Record<string, string>>>();
+
 export function ultraStyles2<T extends Record<string, CSSProperties>>(
     cssObject: T,
     document: Document = window.document
@@ -1220,6 +1262,12 @@ export function ultraStyles2<T extends Record<string, CSSProperties>>(
     if (!isValidCssObject(cssObject)) {
         console.warn('ultraStyles2: invalid cssObject');
         return {} as Record<keyof T, string>;
+    }
+
+    const memoizable = Object.isFrozen(cssObject);
+    if (memoizable) {
+        const hit = styleIdentityCache.get(document)?.get(cssObject);
+        if (hit) return hit as Record<keyof T, string>;
     }
 
     let $styleEl = document.getElementById('ultra-styles') as HTMLStyleElement | null;
@@ -1232,8 +1280,17 @@ export function ultraStyles2<T extends Record<string, CSSProperties>>(
     const returnable: Record<string, string> = {};
     const hash = stableHash(JSON.stringify(cssObject));
 
+    const remember = (result: Record<string, string>): void => {
+        if (!memoizable) return;
+        let perDoc = styleIdentityCache.get(document);
+        if (!perDoc) styleIdentityCache.set(document, perDoc = new WeakMap());
+        perDoc.set(cssObject, result);
+    };
+
     if (styleCache.has(hash)) {
-        return styleCache.get(hash)! as Record<keyof T, string>;
+        const cached = styleCache.get(hash)!;
+        remember(cached);
+        return cached as Record<keyof T, string>;
     }
 
     let cssString = '';
@@ -1255,6 +1312,7 @@ export function ultraStyles2<T extends Record<string, CSSProperties>>(
     $styleEl.appendChild(document.createTextNode(cssString));
 
     styleCache.set(hash, returnable);
+    remember(returnable);
 
     return returnable as Record<keyof T, string>;
 

@@ -39,7 +39,8 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "changeset publish",
-    "size": "node scripts/check-size.mjs"
+    "size": "node scripts/check-size.mjs",
+    "bench:browser": "vite build -c vite.global.config.ts && node bench/browser/run.mjs"
   },
   "keywords": [
     "framework",
@@ -71,6 +72,7 @@
     "globals": "^17.3.0",
     "happy-dom": "^20.8.3",
     "linkedom": "^0.18.12",
+    "playwright-core": "^1.65.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.56.1",
     "vite": "^7.2.4",
