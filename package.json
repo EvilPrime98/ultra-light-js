@@ -1,6 +1,6 @@
 {
   "name": "ultra-light-js",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "A lightweight JavaScript framework for building reactive, state-management, and SPA applications.",
   "type": "module",
   "main": "./dist/ultra-light.js",

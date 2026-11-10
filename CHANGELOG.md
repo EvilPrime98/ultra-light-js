@@ -1,5 +1,11 @@
 # ultra-light-js
 
+## 1.6.3
+
+### Patch Changes
+
+- cf76cb5: perf: cache parsed markup per document in `parseHTMLString` and memoize frozen objects by identity in `ultraStyles2`.
+
 ## 1.6.2
 
 ### Patch Changes
