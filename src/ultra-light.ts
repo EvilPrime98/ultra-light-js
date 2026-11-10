@@ -1035,9 +1035,11 @@ export function ultraStyles(
         scopedCSS = scopedCSS.replace(pattern, `.${hashedClass}`);
     });
 
-    if (!styleEl.textContent?.includes(`/*${hash}*/`)) {
-        styleEl.textContent += `\n/*${hash}*/\n${scopedCSS}`;
-    }
+    // Append a text node. `textContent +=` reads and parses the whole
+    // stylesheet on every call (O(n) per injection). No "already injected"
+    // scan is needed: `styleCache` above returns early for any hash this
+    // module has injected.
+    styleEl.appendChild(document.createTextNode(`\n/*${hash}*/\n${scopedCSS}`));
 
     styleCache.set(hash, classMap);
 
